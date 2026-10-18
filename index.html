@@ -182,7 +182,33 @@ img.av{display:block}
 #ptr.ready #ptrIcon{transform:rotate(180deg)}
 #ptr.busy #ptrIcon{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:20px}
+.ccard{cursor:pointer}
+.ccard:active{transform:scale(.99)}
+.cmore{font-size:12px;color:var(--pink);font-weight:700;text-align:right;margin-top:6px}
+#cdetail{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:106;display:none;align-items:flex-end;justify-content:center}
+#cdetail.show{display:flex}
+#cdetail .sheet{background:var(--yellow-soft);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:0 0 calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.cdHead{position:sticky;top:0;background:var(--yellow);padding:14px 14px 12px;display:flex;gap:12px;align-items:center;z-index:2;border-radius:20px 20px 0 0}
+.cdHead .info{flex:1;min-width:0}
+.cdHead .info b{font-size:18px;display:block}
+.cdHead .info small{font-size:12.5px;color:var(--brown);opacity:.8}
+.cdBody{padding:12px 14px}
+.cdStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 10px}
+.cdStats div{background:#fff;border-radius:12px;padding:9px 6px;text-align:center}
+.cdStats b{display:block;font-size:16px;color:var(--pink)}
+.cdStats small{font-size:11px;color:var(--muted)}
+.visitCard{background:#fff;border-radius:14px;padding:11px 12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(74,42,28,.08)}
+.visitCard .vh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.visitCard .vh b{font-size:14px}
+.visitCard .vh span{font-size:13px;font-weight:800;color:var(--pink);white-space:nowrap}
+.vstat{font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;margin-left:4px}
+.vstat.ok{background:#E7F6EE;color:var(--green)} .vstat.wait{background:#f3ead0;color:var(--brown)}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ba .col small{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.ba .imgs{display:flex;gap:5px;overflow-x:auto}
+.ba img{width:72px;height:72px;object-fit:cover;border-radius:9px;flex-shrink:0;cursor:zoom-in}
+.ba .none{font-size:11.5px;color:#C9B9A6;font-style:italic;padding:6px 0}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:130;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
 </style>
@@ -407,6 +433,7 @@ img.av{display:block}
   <button class="btn ghost" id="askNo" onclick="closeAsk(false)">Hủy</button>
   <button class="btn" id="askYes" onclick="closeAsk(true)">Đồng ý</button>
 </div></div></div>
+<div id="cdetail" onclick="if(event.target===this)closeCustomer()"><div class="sheet" id="cdetailBody"></div></div>
 <div id="lightbox" onclick="this.classList.remove('show')"><img alt=""></div>
 
 <script>
@@ -625,8 +652,9 @@ function renderCustomers(){
   const el = document.getElementById('cList');
   if (!shown.length) { el.innerHTML = bar + '<div class="empty">Chưa có khách nào.<br>Bấm “+ Thêm” để bắt đầu 🐶</div>'; return; }
   renderRemind();
+  if (openCid && document.getElementById('cdetail').classList.contains('show')) openCustomer(openCid);
   el.innerHTML = bar + shown.map(c => { const lv = lastVisit(c.id), late = lateIds.includes(c.id); return `
-    <div class="card">
+    <div class="card ccard" onclick="openCustomer('${c.id}')">
       <div class="row">
         <div class="cwrap">
           ${avHTML(c.avatar, c.type)}
@@ -640,12 +668,71 @@ function renderCustomers(){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <button class="btn small ghost" onclick="openEditCustomer('${c.id}')">Sửa</button>
-          <button class="btn del small" onclick="deleteCustomer('${c.id}')">Xóa</button>
+          <button class="btn small ghost" onclick="event.stopPropagation();openEditCustomer('${c.id}')">Sửa</button>
+          <button class="btn del small" onclick="event.stopPropagation();deleteCustomer('${c.id}')">Xóa</button>
         </div>
       </div>
+      <div class="cmore">Xem lịch sử & ảnh ›</div>
     </div>`; }).join('');
 }
+/* Trang chi tiết khách: thông tin + lịch sử từng lần làm kèm ảnh trước/sau */
+let openCid = null;
+function openCustomer(id){
+  const c = db.customers.find(x => x.id === id); if (!c) return;
+  openCid = id;
+  const visits = db.appts.filter(a => a.cid === id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const done = visits.filter(a => a.done);
+  const spent = done.reduce((s, a) => s + (Number(a.price) || 0), 0);
+  const lv = lastVisit(id);
+  const imgs = arr => arr.length ? `<div class="imgs">${arr.map(src => `<img src="${src}" alt="" onclick="viewImg(this.src)">`).join('')}</div>` : '<div class="none">Chưa có ảnh</div>';
+  const visitHTML = a => {
+    const b = photosOf(a, 'before'), af = photosOf(a, 'after');
+    return `<div class="visitCard">
+      <div class="vh"><b>${fmtD(a.date)} · ${esc(a.time)}<span class="vstat ${a.done ? 'ok' : 'wait'}">${a.done ? '✓ Xong' : 'Chờ'}</span></b><span>${money(a.price)}</span></div>
+      <div class="sub" style="margin-top:2px">${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''}</div>
+      <div class="ba"><div class="col"><small>📷 Trước (${b.length})</small>${imgs(b)}</div><div class="col"><small>✨ Sau (${af.length})</small>${imgs(af)}</div></div>
+    </div>`;
+  };
+  document.getElementById('cdetailBody').innerHTML = `
+    <div class="cdHead">${avHTML(c.avatar, c.type, 'big')}
+      <div class="info"><b>${esc(c.pet)} <span class="tag">${esc(c.type)}</span></b>
+        <small>Chủ: ${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</small></div>
+      <button class="btn ghost small" style="background:#fff" onclick="closeCustomer()">Đóng</button>
+    </div>
+    <div class="cdBody">
+      ${c.note ? `<div class="petnote">🐾 ${esc(c.note)}</div>` : ''}
+      ${c.ownerNote ? `<div class="owner">👤 ${esc(c.ownerNote)}</div>` : ''}
+      <div class="cdStats" style="margin-top:10px">
+        <div><b>${done.length}</b><small>lần đã làm</small></div>
+        <div><b>${spent >= 1e6 ? (spent / 1e6).toFixed(1).replace('.0', '') + 'tr' : Math.round(spent / 1000) + 'k'}</b><small>tổng chi tiêu</small></div>
+        <div><b>${lv ? daysSince(lv) : '–'}</b><small>${lv ? 'ngày từ lần cuối' : 'chưa làm lần nào'}</small></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn" style="flex:1" onclick="bookFor('${c.id}')">+ Đặt lịch</button>
+        <button class="btn ghost" style="flex:1" onclick="closeCustomer();openEditCustomer('${c.id}')">Sửa thông tin</button>
+      </div>
+      <div class="setTitle" style="margin-bottom:8px">✂️ Lịch sử làm đẹp (${visits.length})</div>
+      ${visits.map(visitHTML).join('') || '<div class="empty">Chưa có lần làm nào.<br>Bấm “+ Đặt lịch” để tạo.</div>'}
+    </div>`;
+  document.getElementById('cdetail').classList.add('show');
+  document.querySelector('#cdetail .sheet').scrollTop = 0;
+}
+function closeCustomer(){ document.getElementById('cdetail').classList.remove('show'); openCid = null; }
+function bookFor(id){
+  closeCustomer(); goTab(1);
+  const f = document.getElementById('aForm'); f.classList.add('show');
+  document.getElementById('a_cust').value = id;
+  document.getElementById('a_date').value = today();
+  // gợi ý cân nặng & dịch vụ theo lần gần nhất
+  const last = db.appts.filter(a => a.cid === id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
+  if (last) {
+    if ([...document.getElementById('a_service').options].some(o => o.value === last.service)) document.getElementById('a_service').value = last.service;
+    if (last.weight) document.getElementById('a_weight').value = String(last.weight);
+    autoPrice();
+  }
+  document.getElementById('p2').scrollTop = 0;
+}
+
 /* Khách lâu chưa quay lại: lần làm xong gần nhất cách hôm nay >= 15 ngày và chưa đặt lịch mới */
 let LATE_DAYS = 15;
 let lateOnly = false;
@@ -1436,6 +1523,7 @@ if (isNative()) {
     if (modal.classList.contains('show')) closeAsk(false);
     else if (lb.classList.contains('show')) lb.classList.remove('show');
     else if (document.getElementById('hpanel').classList.contains('show')) closePanel();
+    else if (document.getElementById('cdetail').classList.contains('show')) closeCustomer();
     else if (openForm) openForm.classList.remove('show');
     else if (cur !== 0) goTab(0);
     else P.App.exitApp();
