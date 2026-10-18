@@ -151,6 +151,11 @@ img.av{display:block}
 .form input::placeholder,.inp::placeholder,.search input::placeholder{color:#CDBFAE;font-style:italic;font-weight:400;opacity:1}
 .form input:not(:placeholder-shown),.inp:not(:placeholder-shown),.search input:not(:placeholder-shown){background:#fff;border-color:#E9C744;color:#2B160C;font-weight:600}
 .form select,.form input[type=date],.form input[type=time],.form input[type=number]{color:#2B160C;font-weight:600}
+#remindBar{display:none;gap:6px;padding:7px 12px;background:#FFF1C7;border-bottom:1px solid #F0DF9A;overflow-x:auto;flex-shrink:0}
+#remindBar.show{display:flex}
+#remindBar button{border:0;border-radius:20px;padding:5px 11px;font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer;font-family:inherit;background:#fff;color:var(--brown)}
+#remindBar button.late{background:#FCEAE8;color:var(--red)}
+#remindBar button.today{background:var(--pink);color:#fff}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
@@ -163,6 +168,7 @@ img.av{display:block}
   <p>Chăm sóc thú cưng · Quản lý nhanh</p>
   <div id="syncBadge" onclick="goTab(3)"></div>
 </header>
+<div id="remindBar"></div>
 
 <div class="viewport" id="vp">
   <div class="track" id="track">
@@ -312,6 +318,17 @@ img.av{display:block}
           <button class="btn" id="syncConnectBtn" onclick="syncConnect()">Kết nối</button>
           <button class="btn ghost" onclick="syncNow(true)">⟳ Đồng bộ ngay</button>
           <button class="btn ghost" onclick="syncDisconnect()">Ngắt kết nối</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="setTitle">🔔 Thông báo nhắc lịch</div>
+        <div class="sub">Nhắc 1 tiếng trước mỗi lịch, 20h tối khi mai có lịch, 9h sáng khi có khách lâu chưa quay lại. Cần bật đồng bộ Google Drive ở trên.</div>
+        <div id="pushStat" class="syncStat">…</div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn" id="pushOnBtn" onclick="pushEnable()">Bật thông báo</button>
+          <button class="btn ghost" onclick="pushTest()">Gửi thử</button>
+          <button class="btn ghost" onclick="pushDisable()">Tắt</button>
         </div>
       </div>
 
@@ -573,6 +590,7 @@ function renderCustomers(){
     ? `<div class="alertbar" onclick="toggleLate()"><span>⏰ ${lateIds.length} khách lâu chưa quay lại (từ ${LATE_DAYS} ngày)</span><u>${lateOnly ? 'Xem tất cả' : 'Xem'}</u></div>` : '';
   const el = document.getElementById('cList');
   if (!shown.length) { el.innerHTML = bar + '<div class="empty">Chưa có khách nào.<br>Bấm “+ Thêm” để bắt đầu 🐶</div>'; return; }
+  renderRemind();
   el.innerHTML = bar + shown.map(c => { const lv = lastVisit(c.id), late = lateIds.includes(c.id); return `
     <div class="card">
       <div class="row">
@@ -785,6 +803,20 @@ function renderWeekStrip(day){
     return `<button class="${cls}" onclick="pickDay('${d}')"><small>${n}</small><b>${Number(d.slice(8))}</b><span class="cnt">${cnt ? cnt + ' lịch' : ''}</span></button>`;
   }).join('');
 }
+/* Thanh nhắc dưới tiêu đề: lịch hôm nay, ngày mai, khách lâu chưa quay lại */
+function renderRemind(){
+  const el = document.getElementById('remindBar'); if (!el) return;
+  const t = today(), tm = addDays(t, 1), now = new Date().toTimeString().slice(0, 5);
+  const left = db.appts.filter(a => a.date === t && !a.done && a.time >= now).length;
+  const tmr = db.appts.filter(a => a.date === tm && !a.done).length;
+  const late = db.customers.filter(isLate).length;
+  const items = [];
+  if (left) items.push(`<button class="today" onclick="pickDay('${t}');goTab(1)">📅 Hôm nay còn ${left} lịch</button>`);
+  if (tmr) items.push(`<button onclick="pickDay('${tm}');goTab(1)">🗓️ Mai có ${tmr} lịch</button>`);
+  if (late) items.push(`<button class="late" onclick="lateOnly=true;renderCustomers();goTab(0)">⏰ ${late} khách lâu chưa quay lại</button>`);
+  el.innerHTML = items.join('');
+  el.classList.toggle('show', items.length > 0);
+}
 function renderAppts(){
   const d = document.getElementById('aDay');
   if (!d.value) d.value = today();
@@ -823,6 +855,7 @@ function renderAppts(){
       ${photoRow(a, 'after', '✨ Sau khi làm')}
     </div>`;
   }).join('') : '<div class="empty">Không có lịch hẹn ngày này.</div>';
+  renderRemind();
 }
 
 /* ---------- Dữ liệu mẫu (tháng hiện tại) ---------- */
@@ -1167,6 +1200,72 @@ function syncSetAuto(v){ sync.auto = v; syncSaveCfg(); if (v && sync.dirty) sync
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && syncOn() && sync.auto) syncNow(false); });
 window.addEventListener('online', () => { if (syncOn() && sync.auto) syncNow(false); });
 
+/* ---------- THÔNG BÁO (Web Push qua Apps Script) ---------- */
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function pushSupportMsg(){
+  if (isNative()) return 'Bản APK chưa hỗ trợ – hãy dùng bản web trên trình duyệt';
+  if (!('serviceWorker' in navigator) || location.protocol !== 'https:' && location.hostname !== 'localhost') return 'Hãy mở app bằng link GitHub Pages (https) để dùng thông báo';
+  if (isIOS() && !isStandalone()) return 'Trên iPhone: bấm Chia sẻ → "Thêm vào MH chính", rồi mở app từ màn hình chính để bật thông báo';
+  if (!('PushManager' in window) || !('Notification' in window)) return 'Trình duyệt này chưa hỗ trợ thông báo (iPhone cần iOS 16.4 trở lên)';
+  return '';
+}
+async function pushSub(){
+  try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
+}
+function pushShow(text, cls){
+  const el = document.getElementById('pushStat'); if (!el) return;
+  el.textContent = text; el.className = 'syncStat ' + (cls || '');
+}
+async function pushRender(){
+  const msg = pushSupportMsg();
+  if (msg) return pushShow(msg, 'err');
+  if (Notification.permission === 'denied') return pushShow('Thông báo đang bị chặn – vào Cài đặt của điện thoại để cho phép lại', 'err');
+  const s = await pushSub();
+  if (s && Notification.permission === 'granted') pushShow('✅ Đã bật thông báo trên máy này', 'ok');
+  else pushShow(syncOn() ? 'Chưa bật trên máy này' : 'Cần kết nối Google Drive trước');
+}
+function b64uToBytes(s){
+  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4));
+  return Uint8Array.from(b, c => c.charCodeAt(0));
+}
+async function pushEnable(){
+  const msg = pushSupportMsg();
+  if (msg) return toast(msg);
+  if (!syncOn()) return toast('Hãy kết nối Google Drive ở mục trên trước');
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { pushRender(); return toast('Bạn chưa cho phép thông báo'); }
+    pushShow('Đang bật…');
+    const { key, ready } = await syncCall('vapidKey');
+    const reg = await navigator.serviceWorker.ready;
+    let s = await reg.pushManager.getSubscription();
+    if (s) { const cur = s.options && s.options.applicationServerKey; if (cur && btoa(String.fromCharCode(...new Uint8Array(cur))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'') !== key) { await s.unsubscribe(); s = null; } }
+    if (!s) s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(key) });
+    await syncCall('subscribe', { sub: s.toJSON(), device: sync.device });
+    await pushRender();
+    toast(ready ? 'Đã bật thông báo' : 'Đã bật trên máy – nhớ chạy installPush trong Apps Script');
+  } catch (e) {
+    pushShow('Không bật được: ' + (e.message || e), 'err');
+  }
+}
+async function pushTest(){
+  const s = await pushSub();
+  if (!s) return toast('Hãy bấm "Bật thông báo" trước');
+  try {
+    toast('Đang gửi thử… (khoảng 5–10 giây)');
+    const r = await syncCall('testPush', { endpoint: s.endpoint, device: sync.device });
+    if (!r.ok) toast(r.error || 'Gửi thử không thành công');
+  } catch (e) { toast('Gửi thử lỗi: ' + e.message); }
+}
+async function pushDisable(){
+  const s = await pushSub();
+  if (!s) return toast('Thông báo đang tắt');
+  try { if (syncOn()) await syncCall('unsubscribe', { endpoint: s.endpoint }); } catch (e) {}
+  await s.unsubscribe().catch(() => {});
+  pushRender(); toast('Đã tắt thông báo trên máy này');
+}
+
 /* ---------- Init ---------- */
 applySettings();
 document.getElementById('t_date').value = today();
@@ -1191,6 +1290,7 @@ loadDb().then(d => {
   ready = true;
 }).then(syncLoadCfg).then(() => {
   syncFillForm();
+  pushRender();
   if (syncOn() && sync.auto) syncNow(false);
 });
 
