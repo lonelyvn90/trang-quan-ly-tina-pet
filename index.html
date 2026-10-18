@@ -19,7 +19,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--yellow-soft);color:var(--brown);
   height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent}
-header{background:var(--yellow);padding:12px 16px;text-align:center;flex-shrink:0}
+header{background:var(--yellow);padding:12px 62px;text-align:center;flex-shrink:0;position:relative}
 header h1{font-size:20px;color:var(--pink);letter-spacing:2px}
 header p{font-size:11px;color:var(--brown);opacity:.75;margin-top:2px}
 .viewport{flex:1;overflow:hidden;position:relative}
@@ -156,6 +156,26 @@ img.av{display:block}
 #remindBar button{border:0;border-radius:20px;padding:5px 11px;font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer;font-family:inherit;background:#fff;color:var(--brown)}
 #remindBar button.late{background:#FCEAE8;color:var(--red)}
 #remindBar button.today{background:var(--pink);color:#fff}
+.hbtn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.6);font-size:21px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(74,42,28,.12)}
+.hbtn:active{transform:translateY(-50%) scale(.92)}
+#hbToday{left:12px} #hbLate{right:12px}
+.hbadge{position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;border-radius:10px;padding:0 5px;font-size:11px;font-weight:800;line-height:19px;color:#fff;background:var(--pink);display:none;border:2px solid var(--yellow)}
+#hbLate .hbadge{background:var(--red)}
+.hbadge.show{display:block}
+#hbLate.ring{animation:ring 1.2s ease 2}
+@keyframes ring{0%,100%{transform:translateY(-50%) rotate(0)}15%{transform:translateY(-50%) rotate(14deg)}30%{transform:translateY(-50%) rotate(-12deg)}45%{transform:translateY(-50%) rotate(8deg)}60%{transform:translateY(-50%) rotate(-4deg)}}
+#hpanel{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:105;display:none;align-items:flex-start;justify-content:center;padding:70px 12px 20px}
+#hpanel.show{display:flex}
+#hpanel .sheet{background:#fff;border-radius:18px;width:100%;max-width:440px;max-height:75vh;overflow-y:auto;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+#hpanel h3{font-size:16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#hpanel h4{font-size:13px;color:var(--muted);margin:12px 0 6px}
+.hrow{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:var(--yellow-soft);margin-bottom:6px;cursor:pointer}
+.hrow.done{opacity:.5}
+.hrow .t{font-weight:800;min-width:46px;color:var(--pink)}
+.hrow .m{flex:1;min-width:0}
+.hrow .m b{display:block;font-size:14px}
+.hrow .m small{display:block;font-size:12px;color:var(--muted);line-height:1.4}
+.hrow .d{font-weight:800;color:var(--red);font-size:13px;white-space:nowrap}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
@@ -164,11 +184,13 @@ img.av{display:block}
 <body>
 
 <header>
+  <button class="hbtn" id="hbToday" onclick="openPanel('today')" aria-label="Lịch hôm nay">📅<span class="hbadge" id="hbTodayN"></span></button>
+  <button class="hbtn" id="hbLate" onclick="openPanel('late')" aria-label="Khách lâu chưa quay lại">🔔<span class="hbadge" id="hbLateN"></span></button>
   <h1>TINA PET SPA</h1>
   <p>Chăm sóc thú cưng · Quản lý nhanh</p>
   <div id="syncBadge" onclick="goTab(3)"></div>
 </header>
-<div id="remindBar"></div>
+<div id="hpanel" onclick="if(event.target===this)closePanel()"><div class="sheet" id="hpanelBody"></div></div>
 
 <div class="viewport" id="vp">
   <div class="track" id="track">
@@ -804,19 +826,51 @@ function renderWeekStrip(day){
   }).join('');
 }
 /* Thanh nhắc dưới tiêu đề: lịch hôm nay, ngày mai, khách lâu chưa quay lại */
+/* Nút 📅 và 🔔 trên thanh tiêu đề */
+let lastLateCount = -1;
 function renderRemind(){
-  const el = document.getElementById('remindBar'); if (!el) return;
-  const t = today(), tm = addDays(t, 1), now = new Date().toTimeString().slice(0, 5);
-  const left = db.appts.filter(a => a.date === t && !a.done && a.time >= now).length;
-  const tmr = db.appts.filter(a => a.date === tm && !a.done).length;
+  const t = today();
+  const todayLeft = db.appts.filter(a => a.date === t && !a.done).length;
   const late = db.customers.filter(isLate).length;
-  const items = [];
-  if (left) items.push(`<button class="today" onclick="pickDay('${t}');goTab(1)">📅 Hôm nay còn ${left} lịch</button>`);
-  if (tmr) items.push(`<button onclick="pickDay('${tm}');goTab(1)">🗓️ Mai có ${tmr} lịch</button>`);
-  if (late) items.push(`<button class="late" onclick="lateOnly=true;renderCustomers();goTab(0)">⏰ ${late} khách lâu chưa quay lại</button>`);
-  el.innerHTML = items.join('');
-  el.classList.toggle('show', items.length > 0);
+  const set = (id, n) => { const el = document.getElementById(id); if (!el) return; el.textContent = n > 99 ? '99+' : n; el.classList.toggle('show', n > 0); };
+  set('hbTodayN', todayLeft); set('hbLateN', late);
+  const bell = document.getElementById('hbLate');
+  if (bell && late > 0 && late !== lastLateCount) { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); }
+  lastLateCount = late;
+  if (document.getElementById('hpanel').classList.contains('show')) openPanel(panelKind);
 }
+let panelKind = '';
+function apptRow(a){
+  const c = db.customers.find(x => x.id === a.cid) || { pet: '(đã xóa)', name: '', type: '' };
+  return `<div class="hrow ${a.done ? 'done' : ''}" onclick="closePanel();pickDay('${a.date}');goTab(1)">
+    <span class="t">${esc(a.time)}</span>${avHTML(c.avatar, c.type, 'sm')}
+    <div class="m"><b>${a.done ? '✓ ' : ''}${esc(c.pet)}</b><small>${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''} · ${money(a.price)}</small></div></div>`;
+}
+function openPanel(kind){
+  panelKind = kind;
+  const body = document.getElementById('hpanelBody');
+  const close = '<button class="btn ghost small" onclick="closePanel()">Đóng</button>';
+  if (kind === 'today') {
+    const t = today(), tm = addDays(t, 1), byTime = (a, b) => a.time.localeCompare(b.time);
+    const td = db.appts.filter(a => a.date === t).sort(byTime), tmr = db.appts.filter(a => a.date === tm).sort(byTime);
+    const left = td.filter(a => !a.done).length;
+    body.innerHTML = `<h3>📅 Lịch hẹn ${close}</h3>
+      <h4>Hôm nay ${fmtD(t).slice(0, 5)} · ${td.length ? (left ? 'còn ' + left + '/' + td.length + ' lịch' : 'đã xong hết 🎉') : 'không có lịch'}</h4>
+      ${td.map(apptRow).join('') || '<div class="sub">Không có lịch hẹn hôm nay.</div>'}
+      <h4>Ngày mai ${fmtD(tm).slice(0, 5)} · ${tmr.length} lịch</h4>
+      ${tmr.map(apptRow).join('') || '<div class="sub">Chưa có lịch hẹn.</div>'}`;
+  } else {
+    const list = db.customers.filter(isLate).map(c => ({ c, lv: lastVisit(c.id) })).sort((a, b) => daysSince(b.lv) - daysSince(a.lv));
+    body.innerHTML = `<h3>🔔 Khách lâu chưa quay lại ${close}</h3>
+      <div class="sub" style="margin-bottom:8px">Đã từ ${LATE_DAYS} ngày trở lên kể từ lần làm cuối, chưa đặt lịch mới.</div>
+      ${list.map(({ c, lv }) => `<div class="hrow" onclick="closePanel();lateOnly=true;renderCustomers();goTab(0)">
+        ${avHTML(c.avatar, c.type, 'sm')}
+        <div class="m"><b>${esc(c.pet)} <span class="tag">${esc(c.type)}</span></b><small>${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''} · lần cuối ${fmtD(lv)}</small></div>
+        <span class="d">${daysSince(lv)} ngày</span></div>`).join('') || '<div class="sub">Tuyệt! Không có khách nào lâu chưa quay lại 🐾</div>'}`;
+  }
+  document.getElementById('hpanel').classList.add('show');
+}
+function closePanel(){ document.getElementById('hpanel').classList.remove('show'); panelKind = ''; }
 function renderAppts(){
   const d = document.getElementById('aDay');
   if (!d.value) d.value = today();
@@ -1309,6 +1363,7 @@ if (isNative()) {
     const openForm = document.querySelector('.form.show');
     if (modal.classList.contains('show')) closeAsk(false);
     else if (lb.classList.contains('show')) lb.classList.remove('show');
+    else if (document.getElementById('hpanel').classList.contains('show')) closePanel();
     else if (openForm) openForm.classList.remove('show');
     else if (cur !== 0) goTab(0);
     else P.App.exitApp();
