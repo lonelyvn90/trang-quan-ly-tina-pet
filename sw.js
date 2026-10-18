@@ -1,6 +1,6 @@
 // Lưu app vào máy để mở được khi không có mạng.
 // Luôn thử tải bản mới trước, mất mạng thì dùng bản đã lưu.
-const CACHE = 'tina-web-v1';
+const CACHE = 'tina-web-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {

@@ -140,6 +140,13 @@ img.av{display:block}
 .pgrid label span{width:42px;flex-shrink:0;color:var(--muted)}
 .chk{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:10px}
 .setTitle{font-weight:700;font-size:15px}
+#syncBadge{font-size:11px;margin-top:3px;color:var(--brown);opacity:.8;cursor:pointer;min-height:14px}
+#syncBadge.err{color:var(--red);opacity:1;font-weight:700}
+.syncStat{font-size:12.5px;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--yellow-soft)}
+.syncStat.ok{background:#E7F6EE;color:#1f7a50}
+.syncStat.err{background:#FCEAE8;color:var(--red)}
+.field{margin-top:8px}
+.field small{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
@@ -150,6 +157,7 @@ img.av{display:block}
 <header>
   <h1>TINA PET SPA</h1>
   <p>Chăm sóc thú cưng · Quản lý nhanh</p>
+  <div id="syncBadge" onclick="goTab(3)"></div>
 </header>
 
 <div class="viewport" id="vp">
@@ -286,6 +294,24 @@ img.av{display:block}
       </div>
 
       <div class="card">
+        <div class="setTitle">☁️ Đồng bộ Google Drive</div>
+        <div class="sub">Dữ liệu tự lưu lên Drive của bạn. Máy khác nhập cùng link + mã là thấy cùng dữ liệu.</div>
+        <div class="field"><small>Link Apps Script (kết thúc bằng /exec)</small>
+          <input id="syncUrl" class="inp" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+        <div class="field"><small>Mã bí mật (giống trong Apps Script)</small>
+          <input id="syncKey" class="inp" type="password" autocomplete="off"></div>
+        <div class="field"><small>Tên máy này</small>
+          <input id="syncDevice" class="inp" placeholder="VD: Điện thoại Tina"></div>
+        <label class="chk"><input type="checkbox" id="syncAuto" checked onchange="syncSetAuto(this.checked)"> Tự động đồng bộ khi có thay đổi</label>
+        <div id="syncStat" class="syncStat">Chưa kết nối</div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn" id="syncConnectBtn" onclick="syncConnect()">Kết nối</button>
+          <button class="btn ghost" onclick="syncNow(true)">⟳ Đồng bộ ngay</button>
+          <button class="btn ghost" onclick="syncDisconnect()">Ngắt kết nối</button>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="setTitle">📦 Sao lưu & khôi phục</div>
         <div class="sub" id="dataInfo"></div>
         <label class="chk"><input type="checkbox" id="expPhotos" checked> Kèm ảnh trong file sao lưu</label>
@@ -323,8 +349,8 @@ img.av{display:block}
 
 <div id="toast"></div>
 <div id="modal"><div class="box"><p id="modalMsg"></p><div class="acts">
-  <button class="btn ghost" onclick="closeAsk(false)">Hủy</button>
-  <button class="btn" onclick="closeAsk(true)">Đồng ý</button>
+  <button class="btn ghost" id="askNo" onclick="closeAsk(false)">Hủy</button>
+  <button class="btn" id="askYes" onclick="closeAsk(true)">Đồng ý</button>
 </div></div></div>
 <div id="lightbox" onclick="this.classList.remove('show')"><img alt=""></div>
 
@@ -370,8 +396,9 @@ function onSaveError(e){
   warnedFull = true;
   setTimeout(() => toast(e && e.name === 'QuotaExceededError' ? 'Bộ nhớ đã đầy, hãy xuất sao lưu và xóa bớt ảnh' : 'Không lưu được dữ liệu trên thiết bị này'), 50);
 }
-function save(){
+function save(opts){
   if (!ready) return;
+  if (!(opts && opts.fromSync) && typeof syncMarkDirty === 'function') syncMarkDirty();
   if (useIDB) { IDB.set(KEY, db).catch(onSaveError); return; }
   try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { onSaveError(e); }
 }
@@ -382,9 +409,19 @@ function toast(msg){
   t.textContent = msg; t.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
-let askCb = null;
-function ask(msg, cb){ askCb = cb; document.getElementById('modalMsg').textContent = msg; document.getElementById('modal').classList.add('show'); }
-function closeAsk(ok){ document.getElementById('modal').classList.remove('show'); const f = askCb; askCb = null; if (ok && f) f(); }
+let askCb = null, askNoCb = null;
+function ask(msg, cb, yes = 'Đồng ý', no = 'Hủy', noCb = null){
+  askCb = cb; askNoCb = noCb;
+  document.getElementById('modalMsg').textContent = msg;
+  document.getElementById('askYes').textContent = yes;
+  document.getElementById('askNo').textContent = no;
+  document.getElementById('modal').classList.add('show');
+}
+function closeAsk(ok){
+  document.getElementById('modal').classList.remove('show');
+  const f = ok ? askCb : askNoCb; askCb = askNoCb = null;
+  if (f) f();
+}
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const today = () => new Date().toLocaleDateString('en-CA');
 const money = n => (Number(n) || 0).toLocaleString('vi-VN') + ' ₫';
@@ -957,6 +994,175 @@ function wipeAll(){
   });
 }
 
+/* ---------- ĐỒNG BỘ GOOGLE DRIVE (qua Google Apps Script) ----------
+   - Dữ liệu chữ: 1 file data.json trên Drive. Ảnh: mỗi ảnh 1 file .jpg, chỉ gửi ảnh mới.
+   - Ai sửa sau cùng thì thắng; nếu 2 máy cùng sửa khi chưa đồng bộ, app hỏi giữ bản nào. */
+const SYNC_KEY = 'tina-sync-cfg';
+let sync = { url: '', key: '', device: '', auto: true, base: 0, dirty: false, lastSync: 0, uploaded: [] };
+let syncBusy = false, syncAgain = false, syncTimer = null, syncState = '', syncErr = '';
+async function syncLoadCfg(){
+  try { const c = useIDB ? await IDB.get(SYNC_KEY) : JSON.parse(localStorage.getItem(SYNC_KEY) || 'null'); if (c) sync = {...sync, ...c}; } catch (e) {}
+}
+function syncSaveCfg(){
+  const c = JSON.parse(JSON.stringify(sync));
+  if (useIDB) IDB.set(SYNC_KEY, c).catch(() => {}); else { try { localStorage.setItem(SYNC_KEY, JSON.stringify(c)); } catch (e) {} }
+}
+const syncOn = () => !!(sync.url && sync.key);
+function syncMarkDirty(){
+  if (!syncOn()) return;
+  sync.dirty = true; syncSaveCfg(); syncRender();
+  if (sync.auto) { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(false), 4000); }
+}
+async function syncCall(action, payload = {}){
+  const r = await fetch(sync.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, key: sync.key, ...payload }) });
+  let j; try { j = await r.json(); } catch (e) { throw new Error('Link Apps Script không đúng hoặc chưa cho phép "Anyone"'); }
+  if (!j.ok && !j.conflict) throw new Error(j.error || 'Lỗi không rõ');
+  return j;
+}
+/* Ảnh: tách khỏi dữ liệu, thay bằng mã "ph:<id>" */
+function photoId(s){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i += 7) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return 'p' + h.toString(36) + s.length.toString(36);
+}
+function packDb(){
+  const photos = {}, conv = v => { if (typeof v === 'string' && v.startsWith('data:image')) { const id = photoId(v); photos[id] = v; return 'ph:' + id; } return v; };
+  const data = JSON.parse(JSON.stringify({ customers: db.customers, appts: db.appts, txs: db.txs, settings: db.settings || {} }));
+  data.customers.forEach(c => { if (c.avatar) c.avatar = conv(c.avatar); });
+  data.appts.forEach(a => ['before', 'after'].forEach(k => { if (a[k]) a[k] = photosOf(a, k).map(conv); }));
+  return { data, photos };
+}
+function localPhotos(){ return packDb().photos; }
+async function unpackDb(data){
+  const have = localPhotos(), need = new Set();
+  const scan = v => { if (typeof v === 'string' && v.startsWith('ph:') && !have[v.slice(3)]) need.add(v.slice(3)); };
+  (data.customers || []).forEach(c => scan(c.avatar));
+  (data.appts || []).forEach(a => ['before', 'after'].forEach(k => (a[k] || []).forEach(scan)));
+  const ids = [...need];
+  for (let i = 0; i < ids.length; i += 8) {
+    syncSetState(`Đang tải ảnh ${Math.min(i + 8, ids.length)}/${ids.length}…`);
+    const r = await syncCall('getPhotos', { ids: ids.slice(i, i + 8) });
+    Object.assign(have, r.photos || {});
+  }
+  const back = v => (typeof v === 'string' && v.startsWith('ph:')) ? (have[v.slice(3)] || null) : v;
+  (data.customers || []).forEach(c => { c.avatar = back(c.avatar); });
+  (data.appts || []).forEach(a => ['before', 'after'].forEach(k => { if (a[k]) a[k] = a[k].map(back).filter(Boolean); }));
+  sync.uploaded = [...new Set([...sync.uploaded, ...ids])];
+  return data;
+}
+async function syncPush(force){
+  const { data, photos } = packDb();
+  const fresh = Object.keys(photos).filter(id => !sync.uploaded.includes(id));
+  if (fresh.length) {
+    const { missing } = await syncCall('missingPhotos', { ids: fresh });
+    for (let i = 0; i < missing.length; i += 4) {
+      syncSetState(`Đang gửi ảnh ${Math.min(i + 4, missing.length)}/${missing.length}…`);
+      await syncCall('putPhotos', { photos: missing.slice(i, i + 4).map(id => ({ id, data: photos[id] })) });
+    }
+    sync.uploaded = [...new Set([...sync.uploaded, ...fresh])];
+  }
+  syncSetState('Đang gửi dữ liệu…');
+  const r = await syncCall('push', { data, base: sync.base, force: !!force, device: sync.device });
+  if (r.conflict) return r;
+  sync.base = r.updatedAt; sync.dirty = false; sync.lastSync = Date.now(); syncSaveCfg();
+  return r;
+}
+async function syncPull(){
+  syncSetState('Đang tải dữ liệu từ Drive…');
+  const r = await syncCall('pull');
+  if (!r.data) return;
+  const remoteAt = r.data.updatedAt;
+  const d = await unpackDb(r.data);
+  db = { customers: d.customers || [], appts: d.appts || [], txs: d.txs || [], settings: d.settings || {} };
+  applySettings(); save({ fromSync: true }); refreshAll();
+  sync.base = remoteAt; sync.dirty = false; sync.lastSync = Date.now(); syncSaveCfg();
+}
+function syncConflict(device){
+  return new Promise(res => ask(
+    `Drive có dữ liệu mới hơn${device ? ' từ "' + device + '"' : ''}, trong khi máy này cũng có thay đổi chưa đồng bộ. Giữ bản nào?`,
+    () => res('pull'), 'Lấy bản trên Drive', 'Giữ bản máy này', () => res('push')));
+}
+async function syncNow(manual){
+  if (!syncOn()) { if (manual) toast('Chưa kết nối Google Drive'); return; }
+  if (!navigator.onLine) { syncSetState('', 'Đang offline – sẽ đồng bộ khi có mạng'); return; }
+  if (syncBusy) { syncAgain = true; return; }
+  syncBusy = true; syncErr = '';
+  try {
+    syncSetState('Đang kiểm tra…');
+    const m = await syncCall('meta');
+    if (!m.updatedAt) await syncPush(true);                         // Drive còn trống
+    else if (m.updatedAt === sync.base) { if (sync.dirty) await syncPush(false); }
+    else if (!sync.dirty) await syncPull();                          // máy khác vừa sửa
+    else {
+      const pick = await syncConflict(m.device);
+      if (pick === 'pull') await syncPull(); else await syncPush(true);
+    }
+    if (sync.dirty && !syncAgain) {                                   // vừa sửa trong lúc gửi
+      const r = await syncPush(false);
+      if (r && r.conflict) syncAgain = true;
+    }
+    syncSetState('');
+    if (manual) toast('Đã đồng bộ với Google Drive');
+  } catch (e) {
+    syncSetState('', e.message || String(e));
+  } finally {
+    syncBusy = false;
+    if (syncAgain) { syncAgain = false; setTimeout(() => syncNow(false), 500); }
+  }
+}
+function syncSetState(s, err){ syncState = s; if (err !== undefined) syncErr = err; syncRender(); }
+function syncRender(){
+  const b = document.getElementById('syncBadge'), st = document.getElementById('syncStat');
+  const t = sync.lastSync ? new Date(sync.lastSync).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '';
+  let text, cls = '';
+  if (!syncOn()) text = 'Chưa kết nối';
+  else if (syncErr) { text = '⚠️ ' + syncErr; cls = 'err'; }
+  else if (syncState) text = '⟳ ' + syncState;
+  else if (sync.dirty) text = '☁️ Có thay đổi chờ đồng bộ…';
+  else { text = '☁️ Đã đồng bộ' + (t ? ' · ' + t : ''); cls = 'ok'; }
+  b.textContent = syncOn() ? text : ''; b.className = cls === 'err' ? 'err' : '';
+  st.textContent = text; st.className = 'syncStat ' + cls;
+  document.getElementById('syncConnectBtn').textContent = syncOn() ? 'Lưu thay đổi' : 'Kết nối';
+}
+function syncFillForm(){
+  document.getElementById('syncUrl').value = sync.url;
+  document.getElementById('syncKey').value = sync.key;
+  document.getElementById('syncDevice').value = sync.device;
+  document.getElementById('syncAuto').checked = sync.auto;
+  syncRender();
+}
+async function syncConnect(){
+  const url = document.getElementById('syncUrl').value.trim();
+  const key = document.getElementById('syncKey').value.trim();
+  const device = document.getElementById('syncDevice').value.trim() || ('Máy ' + Math.random().toString(36).slice(2, 6).toUpperCase());
+  if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url)) return toast('Link phải bắt đầu bằng https://script.google.com/…');
+  if (key.length < 8) return toast('Mã bí mật cần ít nhất 8 ký tự');
+  const changed = url !== sync.url || key !== sync.key;
+  const old = { ...sync };
+  sync = { ...sync, url, key, device };
+  if (changed) {
+    // Kết nối mới: nếu máy này đã có dữ liệu thì coi là "có thay đổi" để app hỏi khi Drive cũng có dữ liệu
+    sync.base = 0; sync.uploaded = [];
+    sync.dirty = db.customers.length + db.appts.length + db.txs.length > 0;
+    try { syncSetState('Đang kết nối…', ''); await syncCall('meta'); }
+    catch (e) { sync = old; syncSetState('', ''); syncFillForm(); return toast('Không kết nối được: ' + e.message); }
+  }
+  syncSaveCfg(); syncFillForm();
+  toast(changed ? 'Đã kết nối Google Drive' : 'Đã lưu');
+  syncNow(false);
+}
+function syncDisconnect(){
+  if (!syncOn()) return;
+  ask('Ngắt kết nối Google Drive trên máy này? Dữ liệu trong máy và trên Drive vẫn giữ nguyên.', () => {
+    sync = { url: '', key: '', device: sync.device, auto: true, base: 0, dirty: false, lastSync: 0, uploaded: [] };
+    syncErr = ''; syncSaveCfg(); syncFillForm(); toast('Đã ngắt kết nối');
+  });
+}
+function syncSetAuto(v){ sync.auto = v; syncSaveCfg(); if (v && sync.dirty) syncNow(false); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && syncOn() && sync.auto) syncNow(false); });
+window.addEventListener('online', () => { if (syncOn() && sync.auto) syncNow(false); });
+
 /* ---------- Init ---------- */
 applySettings();
 document.getElementById('t_date').value = today();
@@ -979,6 +1185,9 @@ goTab(0);
 loadDb().then(d => {
   if (d) { db = d; db.customers = db.customers || []; db.appts = db.appts || []; db.txs = db.txs || []; applySettings(); refreshAll(); }
   ready = true;
+}).then(syncLoadCfg).then(() => {
+  syncFillForm();
+  if (syncOn() && sync.auto) syncNow(false);
 });
 
 /* Bản web (GitHub Pages): cho phép cài lên màn hình chính và mở khi không có mạng */
