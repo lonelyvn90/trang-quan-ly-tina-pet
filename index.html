@@ -147,6 +147,10 @@ img.av{display:block}
 .syncStat.err{background:#FCEAE8;color:var(--red)}
 .field{margin-top:8px}
 .field small{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+/* Ô nhập: chữ ví dụ nhạt, nghiêng; đã điền thì chữ đậm, nền trắng, viền vàng */
+.form input::placeholder,.inp::placeholder,.search input::placeholder{color:#CDBFAE;font-style:italic;font-weight:400;opacity:1}
+.form input:not(:placeholder-shown),.inp:not(:placeholder-shown),.search input:not(:placeholder-shown){background:#fff;border-color:#E9C744;color:#2B160C;font-weight:600}
+.form select,.form input[type=date],.form input[type=time],.form input[type=number]{color:#2B160C;font-weight:600}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
