@@ -208,6 +208,27 @@ img.av{display:block}
 .ba .imgs{display:flex;gap:5px;overflow-x:auto}
 .ba img{width:72px;height:72px;object-fit:cover;border-radius:9px;flex-shrink:0;cursor:zoom-in}
 .ba .none{font-size:11.5px;color:#C9B9A6;font-style:italic;padding:6px 0}
+.newcust{background:var(--pink-soft);border-radius:12px;padding:8px;margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.totalLine{margin-top:10px;text-align:right;font-size:14px}
+.totalLine b{color:var(--pink);font-size:17px}
+.acard{padding:10px 12px}
+.ahead{display:flex;align-items:center;gap:10px;cursor:pointer}
+.ahead .t{font-weight:800;font-size:15px;min-width:44px;color:var(--brown)}
+.ahead .m{flex:1;min-width:0}
+.ahead .m b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ahead .m small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ahead .r{text-align:right}
+.ahead .r .price{font-size:15px;display:block}
+.chip{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:8px;margin-top:2px}
+.chip.ok{background:#E7F6EE;color:var(--green)} .chip.wait{background:#f3ead0;color:var(--brown)}
+.chev{font-size:13px;color:var(--muted);transition:transform .2s;margin-left:2px}
+.acard.open .chev{transform:rotate(180deg)}
+.adetail{display:none;margin-top:10px;border-top:1px dashed #f0e4b8;padding-top:8px}
+.acard.open .adetail{display:block}
+.anote{background:#EEF4FF;border-left:3px solid #6B8DD6;padding:4px 8px;border-radius:6px;margin-top:5px;font-size:12.5px;color:#2F4A86;font-weight:600}
+.aextra{font-size:12.5px;margin-top:5px;color:var(--brown)}
+.aacts{display:flex;gap:8px;margin-top:8px;justify-content:flex-end}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#6B8DD6;margin-left:4px;vertical-align:middle}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:130;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
@@ -306,10 +327,20 @@ img.av{display:block}
 
     <!-- ============ TAB 3: LỊCH HẸN ============ -->
     <section class="page" id="p2">
-      <h2>Lịch hẹn <button class="btn small" onclick="toggleForm('aForm')">+ Đặt lịch</button></h2>
+      <h2>Lịch hẹn <button class="btn small" onclick="openApptForm()">+ Đặt lịch</button></h2>
       <div class="form" id="aForm">
+        <div class="formTitle" id="aFormTitle">Đặt lịch mới</div>
         <label>Khách hàng</label>
-        <select id="a_cust"></select>
+        <select id="a_cust" onchange="onApptCust()"></select>
+        <div id="newCustBox" class="newcust" style="display:none">
+          <div class="sub" style="margin:0 0 4px;font-weight:700;color:var(--pink)">✨ Khách mới</div>
+          <input id="n_name" placeholder="Tên chủ (VD: Chị Lan)">
+          <input id="n_phone" type="tel" placeholder="Số điện thoại">
+          <div style="display:flex;gap:6px">
+            <input id="n_pet" placeholder="Tên bé (VD: Milo)" style="flex:1">
+            <select id="n_type" style="width:96px"><option>Chó</option><option>Mèo</option><option>Khác</option></select>
+          </div>
+        </div>
         <label>Combo dịch vụ</label>
         <select id="a_service" onchange="autoPrice()"></select>
         <label>Cân nặng thú cưng</label>
@@ -318,10 +349,18 @@ img.av{display:block}
         <input id="a_date" type="date">
         <label>Giờ</label>
         <input id="a_time" type="time">
-        <label>Giá (VNĐ)</label>
-        <input id="a_price" type="number" inputmode="numeric">
+        <label>Giá dịch vụ (VNĐ)</label>
+        <input id="a_price" type="number" inputmode="numeric" oninput="updTotal()">
+        <label>Phụ thu (VNĐ) – nếu có</label>
+        <div style="display:flex;gap:6px">
+          <input id="a_extra" type="number" inputmode="numeric" placeholder="VD: 30000" style="width:42%" oninput="updTotal()">
+          <input id="a_extraNote" placeholder="Lý do: lông rối, ve, cắn…" style="flex:1">
+        </div>
+        <label>Lưu ý cho lịch này</label>
+        <input id="a_note" placeholder="VD: cắt ngắn phần chân, giữ lông đuôi…">
+        <div class="totalLine">Tổng thu: <b id="a_total">0 ₫</b></div>
         <div class="actions" style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn ghost" onclick="toggleForm('aForm')">Hủy</button>
+          <button class="btn ghost" onclick="closeApptForm()">Hủy</button>
           <button class="btn" onclick="saveAppt()">Lưu</button>
         </div>
       </div>
@@ -682,14 +721,15 @@ function openCustomer(id){
   openCid = id;
   const visits = db.appts.filter(a => a.cid === id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
   const done = visits.filter(a => a.done);
-  const spent = done.reduce((s, a) => s + (Number(a.price) || 0), 0);
+  const spent = done.reduce((s, a) => s + apptTotal(a), 0);
   const lv = lastVisit(id);
   const imgs = arr => arr.length ? `<div class="imgs">${arr.map(src => `<img src="${src}" alt="" onclick="viewImg(this.src)">`).join('')}</div>` : '<div class="none">Chưa có ảnh</div>';
   const visitHTML = a => {
     const b = photosOf(a, 'before'), af = photosOf(a, 'after');
     return `<div class="visitCard">
-      <div class="vh"><b>${fmtD(a.date)} · ${esc(a.time)}<span class="vstat ${a.done ? 'ok' : 'wait'}">${a.done ? '✓ Xong' : 'Chờ'}</span></b><span>${money(a.price)}</span></div>
-      <div class="sub" style="margin-top:2px">${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''}</div>
+      <div class="vh"><b>${fmtD(a.date)} · ${esc(a.time)}<span class="vstat ${a.done ? 'ok' : 'wait'}">${a.done ? '✓ Xong' : 'Chờ'}</span></b><span>${money(apptTotal(a))}</span></div>
+      <div class="sub" style="margin-top:2px">${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''}${a.extra ? ' · phụ thu ' + money(a.extra) + (a.extraNote ? ' (' + esc(a.extraNote) + ')' : '') : ''}</div>
+      ${a.note ? `<div class="anote">📌 ${esc(a.note)}</div>` : ''}
       <div class="ba"><div class="col"><small>📷 Trước (${b.length})</small>${imgs(b)}</div><div class="col"><small>✨ Sau (${af.length})</small>${imgs(af)}</div></div>
     </div>`;
   };
@@ -719,16 +759,16 @@ function openCustomer(id){
 }
 function closeCustomer(){ document.getElementById('cdetail').classList.remove('show'); openCid = null; }
 function bookFor(id){
-  closeCustomer(); goTab(1);
-  const f = document.getElementById('aForm'); f.classList.add('show');
-  document.getElementById('a_cust').value = id;
+  closeCustomer();
+  openApptForm();
+  document.getElementById('a_cust').value = id; onApptCust();
   document.getElementById('a_date').value = today();
   // gợi ý cân nặng & dịch vụ theo lần gần nhất
   const last = db.appts.filter(a => a.cid === id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))[0];
   if (last) {
     if ([...document.getElementById('a_service').options].some(o => o.value === last.service)) document.getElementById('a_service').value = last.service;
     if (last.weight) document.getElementById('a_weight').value = String(last.weight);
-    autoPrice();
+    autoPrice(); updTotal();
   }
   document.getElementById('p2').scrollTop = 0;
 }
@@ -840,34 +880,97 @@ function renderFinance(){
 
 /* ---------- LỊCH HẸN ---------- */
 function refreshCustomerSelect(){
-  const s = document.getElementById('a_cust');
-  s.innerHTML = db.customers.length
-    ? db.customers.map(c => `<option value="${c.id}">${esc(c.pet)} — ${esc(c.name)}</option>`).join('')
-    : '<option value="">Chưa có khách hàng</option>';
+  const s = document.getElementById('a_cust'), keep = s.value;
+  s.innerHTML = '<option value="__new">➕ Khách mới…</option>' +
+    db.customers.map(c => `<option value="${c.id}">${esc(c.pet)} — ${esc(c.name)}</option>`).join('');
+  if (keep && [...s.options].some(o => o.value === keep)) s.value = keep;
+  else s.value = db.customers.length ? db.customers[0].id : '__new';
+  onApptCust();
 }
+function onApptCust(){
+  const isNew = document.getElementById('a_cust').value === '__new';
+  document.getElementById('newCustBox').style.display = isNew ? 'flex' : 'none';
+}
+const apptTotal = a => (Number(a.price) || 0) + (Number(a.extra) || 0);
+function updTotal(){
+  const t = (Number(document.getElementById('a_price').value) || 0) + (Number(document.getElementById('a_extra').value) || 0);
+  document.getElementById('a_total').textContent = money(t);
+}
+let editApptId = null;
+function openApptForm(id){
+  editApptId = id || null;
+  const a = id ? db.appts.find(x => x.id === id) : null;
+  refreshCustomerSelect();
+  ['n_name','n_phone','n_pet','a_extra','a_extraNote','a_note'].forEach(k => document.getElementById(k).value = '');
+  document.getElementById('aFormTitle').textContent = a ? 'Sửa lịch hẹn' : 'Đặt lịch mới';
+  if (a) {
+    document.getElementById('a_cust').value = a.cid; onApptCust();
+    const svc = document.getElementById('a_service');
+    if (![...svc.options].some(o => o.value === a.service)) svc.insertAdjacentHTML('beforeend', `<option>${esc(a.service)}</option>`);
+    svc.value = a.service;
+    document.getElementById('a_weight').value = String(a.weight || 0);
+    document.getElementById('a_date').value = a.date;
+    document.getElementById('a_time').value = a.time;
+    document.getElementById('a_price').value = a.price || '';
+    document.getElementById('a_extra').value = a.extra || '';
+    document.getElementById('a_extraNote').value = a.extraNote || '';
+    document.getElementById('a_note').value = a.note || '';
+  } else {
+    document.getElementById('a_date').value = document.getElementById('aDay').value || today();
+    document.getElementById('a_time').value = '';
+    autoPrice();
+  }
+  updTotal();
+  document.getElementById('aForm').classList.add('show');
+  goTab(1);
+  document.getElementById('p2').scrollTop = 0;
+}
+function closeApptForm(){ document.getElementById('aForm').classList.remove('show'); editApptId = null; }
 function autoPrice(){
   const s = document.getElementById('a_service').value;
   const w = Number(document.getElementById('a_weight').value);
   const i = WEIGHTS.indexOf(w);
   // Trên 20kg hoặc dịch vụ "Khác": nhập giá tay
   document.getElementById('a_price').value = (COMBOS[s] && i >= 0) ? COMBOS[s].prices[i] : '';
+  if (document.getElementById('a_total')) updTotal();
 }
 function saveAppt(){
-  const cid = document.getElementById('a_cust').value;
-  if (!cid) return toast('Thêm khách hàng trước khi đặt lịch');
+  let cid = document.getElementById('a_cust').value;
+  if (cid === '__new') {
+    const name = document.getElementById('n_name').value.trim(), pet = document.getElementById('n_pet').value.trim();
+    if (!name || !pet) return toast('Nhập tên chủ và tên bé cho khách mới');
+    cid = uid();
+    db.customers.unshift({ id: cid, name, pet, phone: document.getElementById('n_phone').value.trim(),
+      type: document.getElementById('n_type').value, note: '', ownerNote: '', avatar: null });
+  }
   const date = document.getElementById('a_date').value || today();
-  db.appts.push({
-    id: uid(), cid, date,
+  const fields = {
+    cid, date,
     time: document.getElementById('a_time').value || '09:00',
     service: document.getElementById('a_service').value,
     weight: Number(document.getElementById('a_weight').value) || 0,
     price: Number(document.getElementById('a_price').value) || 0,
-    done: false
-  });
+    extra: Number(document.getElementById('a_extra').value) || 0,
+    extraNote: document.getElementById('a_extraNote').value.trim(),
+    note: document.getElementById('a_note').value.trim()
+  };
+  let a;
+  if (editApptId && (a = db.appts.find(x => x.id === editApptId))) {
+    Object.assign(a, fields);
+    // lịch đã thu tiền → cập nhật luôn khoản thu tương ứng
+    const tx = db.txs.find(t => t.apptId === a.id);
+    if (tx) { const c = db.customers.find(x => x.id === a.cid) || {pet:''}; tx.amount = apptTotal(a); tx.desc = `${c.pet} – ${a.service}`; tx.date = a.date; }
+  } else {
+    a = { id: uid(), ...fields, done: false };
+    db.appts.push(a);
+  }
+  openAppts.add(a.id);
+  const wasEdit = !!editApptId;
   save();
-  toggleForm('aForm');
+  closeApptForm();
   document.getElementById('aDay').value = date;
-  renderAppts();
+  refreshCustomerSelect(); renderCustomers(); renderAppts(); renderFinance();
+  toast(wasEdit ? 'Đã lưu thay đổi' : 'Đã đặt lịch');
 }
 function toggleDone(id){
   const a = db.appts.find(x => x.id === id); if (!a) return;
@@ -875,10 +978,10 @@ function toggleDone(id){
   if (!a.done) {
     // Xong & đã thu tiền: tự ghi khoản thu vào Thu chi
     a.done = true;
-    db.txs.push({id: uid(), type:'thu', amount: a.price, desc: `${c.pet} – ${a.service}`,
+    db.txs.push({id: uid(), type:'thu', amount: apptTotal(a), desc: `${c.pet} – ${a.service}`,
                  date: a.date, apptId: a.id, demo: a.demo});
     save(); renderAppts(); renderFinance();
-    toast(`Đã thu ${money(a.price)} · ghi vào Thu chi`);
+    toast(`Đã thu ${money(apptTotal(a))} · ghi vào Thu chi`);
   } else {
     ask('Hủy trạng thái đã thu tiền? Khoản thu sẽ bị xóa khỏi Thu chi.', () => {
       a.done = false;
@@ -952,7 +1055,7 @@ function apptRow(a){
   const c = db.customers.find(x => x.id === a.cid) || { pet: '(đã xóa)', name: '', type: '' };
   return `<div class="hrow ${a.done ? 'done' : ''}" onclick="closePanel();pickDay('${a.date}');goTab(1)">
     <span class="t">${esc(a.time)}</span>${avHTML(c.avatar, c.type, 'sm')}
-    <div class="m"><b>${a.done ? '✓ ' : ''}${esc(c.pet)}</b><small>${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''} · ${money(a.price)}</small></div></div>`;
+    <div class="m"><b>${a.done ? '✓ ' : ''}${esc(c.pet)}</b><small>${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''} · ${money(apptTotal(a))}</small></div></div>`;
 }
 function openPanel(kind){
   panelKind = kind;
@@ -979,6 +1082,12 @@ function openPanel(kind){
   document.getElementById('hpanel').classList.add('show');
 }
 function closePanel(){ document.getElementById('hpanel').classList.remove('show'); panelKind = ''; }
+const openAppts = new Set();
+function toggleAppt(id){
+  const el = document.getElementById('ac-' + id);
+  if (openAppts.has(id)) { openAppts.delete(id); el && el.classList.remove('open'); }
+  else { openAppts.add(id); el && el.classList.add('open'); }
+}
 function renderAppts(){
   const d = document.getElementById('aDay');
   if (!d.value) d.value = today();
@@ -992,29 +1101,35 @@ function renderAppts(){
   const list = db.appts.filter(a => a.date === day).sort((a,b) => a.time.localeCompare(b.time));
   document.getElementById('aList').innerHTML = list.length ? list.map(a => {
     const c = db.customers.find(x => x.id === a.cid) || {pet:'(đã xóa)', name:'', phone:'', type:'', avatar:null};
+    const nPh = photosOf(a, 'before').length + photosOf(a, 'after').length;
+    const open = openAppts.has(a.id);
     return `
-    <div class="card">
-      <div class="row">
-        <div class="cwrap">
-          ${avHTML(c.avatar, c.type, 'sm')}
-          <div>
-            <div class="name">⏰ ${esc(a.time)} · ${esc(c.pet)}</div>
-            <div class="sub">${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''}</div>
-            <div class="sub">Chủ: ${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</div>
-            ${c.note ? `<div class="petnote">🐾 ${esc(c.note)}</div>` : ''}
-            ${c.ownerNote ? `<div class="owner">👤 ${esc(c.ownerNote)}</div>` : ''}
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <span class="price">${money(a.price)}</span>
+    <div class="card acard ${open ? 'open' : ''}" id="ac-${a.id}">
+      <div class="ahead" onclick="toggleAppt('${a.id}')">
+        <span class="t">${esc(a.time)}</span>
+        ${avHTML(c.avatar, c.type, 'sm')}
+        <div class="m"><b>${esc(c.pet)}${a.note || c.note ? '<span class="dot" title="Có lưu ý"></span>' : ''}</b>
+          <small>${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''}${nPh ? ' · 📷' + nPh : ''}</small></div>
+        <div class="r"><span class="price">${money(apptTotal(a))}</span>
+          <span class="chip ${a.done ? 'ok' : 'wait'}">${a.done ? '✓ Đã thu' : 'Chờ'}</span></div>
+        <span class="chev">▾</span>
+      </div>
+      <div class="adetail">
+        <div class="sub" style="margin-top:0">Chủ: ${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</div>
+        ${a.extra ? `<div class="aextra">💰 Giá ${money(a.price)} + phụ thu <b>${money(a.extra)}</b>${a.extraNote ? ' (' + esc(a.extraNote) + ')' : ''}</div>` : ''}
+        ${a.note ? `<div class="anote">📌 ${esc(a.note)}</div>` : ''}
+        ${c.note ? `<div class="petnote">🐾 ${esc(c.note)}</div>` : ''}
+        ${c.ownerNote ? `<div class="owner">👤 ${esc(c.ownerNote)}</div>` : ''}
+        <button class="btn payBtn ${a.done ? 'paid' : ''}" onclick="toggleDone('${a.id}')">
+          ${a.done ? '✓ Đã thu ' + money(apptTotal(a)) : 'Xong - đã thu tiền ' + money(apptTotal(a))}
+        </button>
+        ${photoRow(a, 'before', '📷 Trước khi làm')}
+        ${photoRow(a, 'after', '✨ Sau khi làm')}
+        <div class="aacts">
+          <button class="btn ghost small" onclick="openApptForm('${a.id}')">✏️ Sửa lịch</button>
           <button class="btn del small" onclick="deleteAppt('${a.id}')">Xóa</button>
         </div>
       </div>
-      <button class="btn payBtn ${a.done ? 'paid' : ''}" onclick="toggleDone('${a.id}')">
-        ${a.done ? '✓ Đã thu ' + money(a.price) : 'Xong - đã thu tiền'}
-      </button>
-      ${photoRow(a, 'before', '📷 Trước khi làm')}
-      ${photoRow(a, 'after', '✨ Sau khi làm')}
     </div>`;
   }).join('') : '<div class="empty">Không có lịch hẹn ngày này.</div>';
   renderRemind();
