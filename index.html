@@ -229,6 +229,9 @@ img.av{display:block}
 .aextra{font-size:12.5px;margin-top:5px;color:var(--brown)}
 .aacts{display:flex;gap:8px;margin-top:8px;justify-content:flex-end}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#6B8DD6;margin-left:4px;vertical-align:middle}
+.th.pend{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;color:var(--muted);background:#f3ead0}
+.th.pend small{font-size:10px;font-weight:700}
+.pendimg{width:72px;height:72px;border-radius:9px;background:#f3ead0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:130;padding:20px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:100%;max-height:100%;border-radius:12px}
@@ -573,7 +576,7 @@ function pickPhoto(file, maxSide, cb){
   r.readAsDataURL(file);
 }
 function avHTML(src, type, cls = ''){
-  if (src) return `<img class="av ${cls}" src="${src}" alt="">`;
+  if (src && String(src).startsWith('data:')) return `<img class="av ${cls}" src="${src}" alt="">`;
   const icon = type === 'Mèo' ? '🐱' : type === 'Chó' ? '🐶' : '🐾';
   return `<div class="av ${cls}">${icon}</div>`;
 }
@@ -723,7 +726,7 @@ function openCustomer(id){
   const done = visits.filter(a => a.done);
   const spent = done.reduce((s, a) => s + apptTotal(a), 0);
   const lv = lastVisit(id);
-  const imgs = arr => arr.length ? `<div class="imgs">${arr.map(src => `<img src="${src}" alt="" onclick="viewImg(this.src)">`).join('')}</div>` : '<div class="none">Chưa có ảnh</div>';
+  const imgs = arr => arr.length ? `<div class="imgs">${arr.map(src => String(src).startsWith('data:') ? `<img src="${src}" alt="" onclick="viewImg(this.src)">` : '<span class="pendimg">⏳</span>').join('')}</div>` : '<div class="none">Chưa có ảnh</div>';
   const visitHTML = a => {
     const b = photosOf(a, 'before'), af = photosOf(a, 'after');
     return `<div class="visitCard">
@@ -999,11 +1002,21 @@ function deleteAppt(id){
 }
 /* Ảnh trước / sau khi làm, gắn với từng lịch hẹn */
 function photosOf(a, which){ const v = a[which]; return Array.isArray(v) ? v : (v ? [v] : []); }
-function onApptPhoto(input, id, which){
+let photoBusy = 0;
+async function onApptPhoto(input, id, which){
   const files = [...input.files]; input.value = '';
-  const a = db.appts.find(x => x.id === id); if (!a || !files.length) return;
-  a[which] = photosOf(a, which);
-  files.forEach(f => pickPhoto(f, 800, u => { a[which].push(u); save(); renderAppts(); }));
+  if (!files.length || !db.appts.some(x => x.id === id)) return;
+  photoBusy++;
+  try {
+    for (let i = 0; i < files.length; i++) {
+      if (files.length > 1) toast(`Đang xử lý ảnh ${i + 1}/${files.length}…`);
+      const u = await new Promise(res => { try { pickPhoto(files[i], 800, res); } catch (e) { res(null); } setTimeout(() => res(null), 20000); });
+      const a = db.appts.find(x => x.id === id);          // tìm lại (phòng khi vừa đồng bộ)
+      if (u && a && u.startsWith('data:image')) { a[which] = photosOf(a, which); a[which].push(u); }
+    }
+  } finally { photoBusy--; }
+  save(); renderAppts();
+  if (files.length > 1) toast(`Đã thêm ${files.length} ảnh`);
 }
 function removeApptPhoto(id, which, i){
   const a = db.appts.find(x => x.id === id); if (!a) return;
@@ -1012,7 +1025,9 @@ function removeApptPhoto(id, which, i){
 function photoRow(a, which, cap){
   const arr = photosOf(a, which);
   return `<div class="phrow"><div class="lbl">${cap} (${arr.length})</div><div class="phlist">
-    ${arr.map((src, i) => `<div class="th"><img src="${src}" alt="" onclick="viewImg(this.src)"><button class="x" onclick="removeApptPhoto('${a.id}','${which}',${i})">✕</button></div>`).join('')}
+    ${arr.map((src, i) => String(src).startsWith('data:')
+      ? `<div class="th"><img src="${src}" alt="" onclick="viewImg(this.src)"><button class="x" onclick="removeApptPhoto('${a.id}','${which}',${i})">✕</button></div>`
+      : `<div class="th pend" title="Ảnh đang chờ tải từ Drive">⏳<small>đang tải</small></div>`).join('')}
     <div class="th add"><label>📷<span>Chụp</span><input type="file" accept="image/*" capture="environment" onchange="onApptPhoto(this,'${a.id}','${which}')"></label></div>
     <div class="th add"><label>🖼️<span>Thư viện</span><input type="file" accept="image/*" multiple onchange="onApptPhoto(this,'${a.id}','${which}')"></label></div>
   </div></div>`;
@@ -1325,6 +1340,7 @@ const syncOn = () => !!(sync.url && sync.key);
 function syncMarkDirty(){
   if (!syncOn()) return;
   sync.dirty = true; syncSaveCfg(); syncRender();
+  if (photoBusy) return;   // đang xử lý ảnh → đợi xong hết mới gửi
   if (sync.auto) { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(false), 4000); }
 }
 async function syncCall(action, payload = {}){
@@ -1359,23 +1375,46 @@ async function unpackDb(data){
     const r = await syncCall('getPhotos', { ids: ids.slice(i, i + 8) });
     Object.assign(have, r.photos || {});
   }
-  const back = v => (typeof v === 'string' && v.startsWith('ph:')) ? (have[v.slice(3)] || null) : v;
+  // Ảnh chưa có trên Drive: GIỮ LẠI mã "ph:..." để không bị mất, lần đồng bộ sau tải tiếp
+  const back = v => (typeof v === 'string' && v.startsWith('ph:') && have[v.slice(3)]) ? have[v.slice(3)] : v;
   (data.customers || []).forEach(c => { c.avatar = back(c.avatar); });
   (data.appts || []).forEach(a => ['before', 'after'].forEach(k => { if (a[k]) a[k] = a[k].map(back).filter(Boolean); }));
-  sync.uploaded = [...new Set([...sync.uploaded, ...ids])];
   return data;
+}
+function pendingRefs(){
+  const s = new Set(), scan = v => { if (typeof v === 'string' && v.startsWith('ph:')) s.add(v.slice(3)); };
+  db.customers.forEach(c => scan(c.avatar));
+  db.appts.forEach(a => ['before', 'after'].forEach(k => photosOf(a, k).forEach(scan)));
+  return [...s];
+}
+async function resolvePending(){
+  const ids = pendingRefs(); if (!ids.length) return 0;
+  const got = {};
+  for (let i = 0; i < ids.length; i += 8) {
+    syncSetState(`Đang tải ảnh ${Math.min(i + 8, ids.length)}/${ids.length}…`);
+    Object.assign(got, (await syncCall('getPhotos', { ids: ids.slice(i, i + 8) })).photos || {});
+  }
+  const n = Object.keys(got).length; if (!n) return 0;
+  const back = v => (typeof v === 'string' && v.startsWith('ph:') && got[v.slice(3)]) ? got[v.slice(3)] : v;
+  db.customers.forEach(c => { c.avatar = back(c.avatar); });
+  db.appts.forEach(a => ['before', 'after'].forEach(k => { if (a[k]) a[k] = photosOf(a, k).map(back); }));
+  save({ fromSync: true }); refreshAll();
+  return n;
+}
+/* Gửi lên Drive mọi ảnh trong máy mà Drive còn thiếu (kể cả lần trước gửi dở) */
+async function uploadMissingPhotos(photos){
+  photos = photos || packDb().photos;
+  const ids = Object.keys(photos); if (!ids.length) return 0;
+  const { missing } = await syncCall('missingPhotos', { ids });
+  for (let i = 0; i < missing.length; i += 4) {
+    syncSetState(`Đang gửi ảnh ${Math.min(i + 4, missing.length)}/${missing.length}…`);
+    await syncCall('putPhotos', { photos: missing.slice(i, i + 4).map(id => ({ id, data: photos[id] })) });
+  }
+  return missing.length;
 }
 async function syncPush(force){
   const { data, photos } = packDb();
-  const fresh = Object.keys(photos).filter(id => !sync.uploaded.includes(id));
-  if (fresh.length) {
-    const { missing } = await syncCall('missingPhotos', { ids: fresh });
-    for (let i = 0; i < missing.length; i += 4) {
-      syncSetState(`Đang gửi ảnh ${Math.min(i + 4, missing.length)}/${missing.length}…`);
-      await syncCall('putPhotos', { photos: missing.slice(i, i + 4).map(id => ({ id, data: photos[id] })) });
-    }
-    sync.uploaded = [...new Set([...sync.uploaded, ...fresh])];
-  }
+  await uploadMissingPhotos(photos);
   syncSetState('Đang gửi dữ liệu…');
   const r = await syncCall('push', { data, base: sync.base, force: !!force, device: sync.device });
   if (r.conflict) return r;
@@ -1417,7 +1456,10 @@ async function syncNow(manual){
       if (r && r.conflict) syncAgain = true;
     }
     syncSetState('');
-    if (manual) toast('Đã đồng bộ với Google Drive');
+    if (!sync.dirty) await uploadMissingPhotos();   // tự gửi bù ảnh Drive còn thiếu
+    await resolvePending();
+    syncSetState('');
+    if (manual) toast(pendingRefs().length ? `Còn ${pendingRefs().length} ảnh máy khác chưa gửi lên Drive` : 'Đã đồng bộ với Google Drive');
   } catch (e) {
     syncSetState('', e.message || String(e));
   } finally {
@@ -1474,7 +1516,11 @@ function syncDisconnect(){
   });
 }
 function syncSetAuto(v){ sync.auto = v; syncSaveCfg(); if (v && sync.dirty) syncNow(false); }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && syncOn() && sync.auto) syncNow(false); });
+document.addEventListener('visibilitychange', () => {
+  if (!syncOn() || !sync.auto) return;
+  if (document.visibilityState === 'visible') syncNow(false);
+  else if (sync.dirty && !photoBusy) { clearTimeout(syncTimer); syncNow(false); }   // sắp tắt app → gửi ngay
+});
 window.addEventListener('online', () => { if (syncOn() && sync.auto) syncNow(false); });
 
 /* ---------- THÔNG BÁO (Web Push qua Apps Script) ---------- */
