@@ -1,0 +1,17 @@
+{
+  "name": "TINA Pet Spa",
+  "short_name": "TINA Spa",
+  "description": "Quản lý khách hàng, lịch hẹn, thu chi - TINA Pet Care & Grooming",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF8DC",
+  "theme_color": "#F5D55C",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

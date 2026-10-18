@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TINA Pet Spa</title>
+<meta name="theme-color" content="#F5D55C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TINA Spa">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --yellow:#F5D55C; --yellow-soft:#FFF8DC; --pink:#E8478B; --pink-soft:#FDE4EF;
+  --brown:#4A2A1C; --muted:#9A7F72; --white:#fff; --green:#2E9E6A; --red:#D9473B;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--yellow-soft);color:var(--brown);
+  height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent}
+header{background:var(--yellow);padding:12px 16px;text-align:center;flex-shrink:0}
+header h1{font-size:20px;color:var(--pink);letter-spacing:2px}
+header p{font-size:11px;color:var(--brown);opacity:.75;margin-top:2px}
+.viewport{flex:1;overflow:hidden;position:relative}
+.track{display:flex;height:100%;transition:transform .3s ease}
+.page{min-width:100%;height:100%;overflow-y:auto;padding:14px 14px 100px}
+.page h2{font-size:17px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--white);box-shadow:0 -2px 10px rgba(0,0,0,.08);z-index:10}
+nav{padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:9px 4px 12px;font-size:12px;color:var(--muted);cursor:pointer}
+nav button.active{color:var(--pink);font-weight:700}
+nav button .ic{display:block;font-size:20px;margin-bottom:2px}
+nav button.active .bar{height:3px;width:28px;background:var(--pink);border-radius:3px;margin:4px auto 0}
+.card{background:var(--white);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(74,42,28,.08)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cwrap{display:flex;gap:10px;align-items:center;flex:1;min-width:0}
+.name{font-weight:700;font-size:15px}
+.sub{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.tag{display:inline-block;font-size:11px;background:var(--pink-soft);color:var(--pink);padding:2px 8px;border-radius:10px;margin-left:4px;font-weight:600}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;background:var(--pink);color:#fff}
+.btn.ghost{background:var(--yellow);color:var(--brown)}
+.btn.small{padding:5px 10px;font-size:12px;white-space:nowrap}
+.btn.del{background:none;color:var(--red);padding:4px}
+.btn.done{background:var(--green)}
+.btn.todo{background:#f3ead0;color:var(--brown)}
+.form{background:var(--white);border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(74,42,28,.08);display:none}
+.form.show{display:block}
+.formTitle{font-weight:700;color:var(--pink);font-size:15px;margin-bottom:2px}
+.form label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+.form input,.form select,.search input,.date input,.month input{
+  width:100%;padding:10px 11px;border:1.5px solid #f0e4b8;border-radius:10px;font-size:15px;background:#fffdf5;color:var(--brown);outline:none}
+.form input:focus,.form select:focus{border-color:var(--pink)}
+.form .actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.avRow{display:flex;gap:12px;align-items:center;margin-top:6px}
+.avRow input[type=file]{font-size:12px;width:auto;border:0;padding:0;background:none}
+.search{margin-bottom:10px}
+.search input{background:#fff}
+.date,.month{margin-bottom:10px}
+.seg{display:flex;background:#f3ead0;border-radius:10px;padding:3px;margin-top:4px}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button.on.in{background:var(--green);color:#fff}
+.seg button.on.out{background:var(--red);color:#fff}
+.seg button.on.pk{background:var(--pink);color:#fff}
+.week{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:700;font-size:14px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--white);border-radius:14px;padding:12px;box-shadow:0 1px 3px rgba(74,42,28,.08)}
+.stat small{font-size:11px;color:var(--muted)}
+.stat b{display:block;font-size:16px;margin-top:4px}
+.stat.wide{grid-column:span 2;background:var(--pink);color:#fff}
+.stat.wide small{color:#ffe3ef}
+.amt-in{color:var(--green);font-weight:700}
+.amt-out{color:var(--red);font-weight:700}
+.empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:13px}
+.status-btn{white-space:nowrap}
+.price{font-size:17px;font-weight:800;color:var(--pink);white-space:nowrap}
+.payBtn{width:100%;margin-top:10px;padding:11px;font-size:14px}
+.payBtn.paid{background:var(--green)}
+.owner{background:var(--yellow-soft);border-left:3px solid var(--yellow);padding:4px 8px;border-radius:6px;margin-top:5px;font-size:12.5px;color:var(--brown)}
+/* avatar */
+.av{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid var(--yellow)}
+img.av{display:block}
+.av.big{width:84px;height:84px;font-size:44px}
+.av.sm{width:36px;height:36px;font-size:18px;border-width:1.5px}
+/* before / after photos */
+.photos{display:flex;gap:8px;margin-top:10px}
+.ph{position:relative;width:110px;height:110px;border-radius:10px;overflow:hidden;background:#f6efd6}
+.ph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block}
+.ph .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(74,42,28,.7);color:#fff;font-size:11px;text-align:center;padding:3px}
+.ph .x{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer}
+.ph label{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--pink-soft);color:var(--pink);font-weight:600;font-size:12px;cursor:pointer;text-align:center;padding:6px}
+.ph label input{display:none}
+.stat.in{background:#E7F6EE}
+.stat.out{background:#FCEAE8}
+.profit{grid-column:span 2;border-radius:16px;padding:16px;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.profit small{font-size:12px;opacity:.92;display:block}
+.profit b{display:block;font-size:28px;margin-top:6px;letter-spacing:.5px}
+.profit.pos{background:linear-gradient(135deg,#2E9E6A,#41C98C)}
+.profit.neg{background:linear-gradient(135deg,#D9473B,#F2786C)}
+.daynav{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.daynav input{flex:1}
+.asum{font-size:12.5px;color:var(--muted);margin-bottom:10px;text-align:center}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--brown);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:120;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:110;padding:24px}
+#modal.show{display:flex}
+#modal .box{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:320px;text-align:center}
+#modal p{font-size:15px;margin-bottom:14px}
+#modal .acts{display:flex;gap:8px}
+#modal .acts .btn{flex:1}
+.petnote{background:var(--pink-soft);border-left:3px solid var(--pink);padding:4px 8px;border-radius:6px;margin-top:5px;font-size:12.5px;color:#A3245C;font-weight:600}
+.visit{font-size:12px;color:var(--muted);margin-top:5px}
+.late{background:#FCEAE8;color:var(--red);font-weight:700;font-size:12px;padding:4px 8px;border-radius:6px;margin-top:5px}
+.alertbar{background:#FCEAE8;color:var(--red);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.wkhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700;font-size:14px;gap:6px}
+.wkhead .mid{display:flex;align-items:center;gap:8px}
+.wkstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:8px}
+.wd{border:0;background:#fff;border-radius:12px;padding:7px 0 5px;text-align:center;cursor:pointer;color:var(--brown);box-shadow:0 1px 2px rgba(74,42,28,.1);font-family:inherit}
+.wd small{display:block;font-size:10.5px;color:var(--muted)}
+.wd b{display:block;font-size:16px;margin-top:1px}
+.wd .cnt{display:block;font-size:10px;font-weight:700;margin-top:1px;height:13px;color:var(--pink)}
+.wd.has{background:var(--yellow)}
+.wd.today{outline:2px solid var(--pink);outline-offset:-2px}
+.wd.sel{background:var(--pink);color:#fff}
+.wd.sel small,.wd.sel .cnt{color:#fff}
+.phrow{margin-top:10px}
+.phrow .lbl{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.phlist{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.th{position:relative;flex:0 0 78px;height:78px;border-radius:10px;overflow:hidden;background:#f6efd6}
+.th img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.th .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer}
+.th.add label{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--pink-soft);color:var(--pink);font-weight:600;font-size:11.5px;cursor:pointer;border:1.5px dashed var(--pink);border-radius:10px}
+.th.add input{display:none}
+.inp{padding:9px 10px;border:1.5px solid #f0e4b8;border-radius:10px;font-size:15px;background:#fffdf5;color:var(--brown);outline:none;width:100%;min-width:0;font-family:inherit}
+.inp:focus{border-color:var(--pink)}
+.combo{margin-top:12px;padding-top:10px;border-top:1px dashed #f0e4b8}
+.combo b{color:var(--pink);font-size:14px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:8px}
+.pgrid label{display:flex;align-items:center;gap:6px;font-size:13px}
+.pgrid label span{width:42px;flex-shrink:0;color:var(--muted)}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:10px}
+.setTitle{font-weight:700;font-size:15px}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:20px}
+#lightbox.show{display:flex}
+#lightbox img{max-width:100%;max-height:100%;border-radius:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TINA PET SPA</h1>
+  <p>Chăm sóc thú cưng · Quản lý nhanh</p>
+</header>
+
+<div class="viewport" id="vp">
+  <div class="track" id="track">
+
+    <!-- ============ TAB 1: KHÁCH HÀNG ============ -->
+    <section class="page" id="p0">
+      <h2>Khách hàng <button class="btn small" onclick="openAddCustomer()">+ Thêm</button></h2>
+      <div class="form" id="cForm">
+        <div class="formTitle" id="cFormTitle">Thêm khách hàng mới</div>
+        <label>Ảnh bé</label>
+        <div class="avRow">
+          <div id="c_avPrev"></div>
+          <div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <label class="btn ghost small">📷 Chụp ảnh<input type="file" accept="image/*" capture="environment" style="display:none" onchange="onAvatarPick(this)"></label>
+              <label class="btn ghost small">🖼️ Chọn ảnh<input type="file" accept="image/*" style="display:none" onchange="onAvatarPick(this)"></label>
+            </div>
+            <button class="btn ghost small" style="margin-top:6px" onclick="removeAvatar()">Bỏ ảnh</button>
+          </div>
+        </div>
+        <label>Tên chủ</label>
+        <input id="c_name" placeholder="VD: Chị Lan">
+        <label>Số điện thoại</label>
+        <input id="c_phone" type="tel" placeholder="09xx xxx xxx">
+        <label>Tên thú cưng</label>
+        <input id="c_pet" placeholder="VD: Milo">
+        <label>Loại</label>
+        <select id="c_type" onchange="drawAvPrev()"><option>Chó</option><option>Mèo</option><option>Khác</option></select>
+        <label>Ghi chú về bé</label>
+        <input id="c_note" placeholder="Dị ứng, tính cách, lưu ý...">
+        <label>Ghi chú về chủ</label>
+        <input id="c_ownerNote" placeholder="VD: Khách quen, hay đến trễ, thích chuyển khoản...">
+        <div class="actions">
+          <button class="btn ghost" onclick="closeCustomerForm()">Hủy</button>
+          <button class="btn" onclick="saveCustomer()">Lưu</button>
+        </div>
+      </div>
+      <div class="search"><input id="cSearch" placeholder="🔍 Tìm tên, SĐT, tên thú cưng" oninput="renderCustomers()"></div>
+      <div id="cList"></div>
+    </section>
+
+    <!-- ============ TAB 2: THU CHI ============ -->
+    <section class="page" id="p1">
+      <h2>Thu chi</h2>
+      <div class="seg" id="viewSeg">
+        <button data-v="week" onclick="setView('week')">Tuần</button>
+        <button data-v="month" onclick="setView('month')">Tháng</button>
+      </div>
+      <div class="month" id="fMonthBox"><input type="month" id="fMonth" onchange="renderFinance()"></div>
+      <div class="week" id="fWeekBox" style="display:none">
+        <button class="btn ghost small" onclick="shiftWeek(-1)">◀</button>
+        <span id="weekLabel"></span>
+        <button class="btn ghost small" onclick="shiftWeek(1)">▶</button>
+      </div>
+      <div class="stats" id="fStats"></div>
+      <div class="form" id="tForm">
+        <div class="seg" id="tSeg">
+          <button class="on in" data-t="thu" onclick="setTxType('thu')">+ Thu</button>
+          <button data-t="chi" onclick="setTxType('chi')">− Chi</button>
+        </div>
+        <label>Số tiền (VNĐ)</label>
+        <input id="t_amt" type="number" inputmode="numeric" placeholder="VD: 150000">
+        <label>Nội dung</label>
+        <input id="t_desc" placeholder="VD: Tắm Milo / Mua cát mèo">
+        <label>Ngày</label>
+        <input id="t_date" type="date">
+        <div class="actions" style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn ghost" onclick="toggleForm('tForm')">Hủy</button>
+          <button class="btn" onclick="saveTx()">Lưu</button>
+        </div>
+      </div>
+      <button class="btn" style="width:100%;margin-bottom:12px" onclick="openTxForm()">+ Ghi thu / chi</button>
+      <div id="tList"></div>
+    </section>
+
+    <!-- ============ TAB 3: LỊCH HẸN ============ -->
+    <section class="page" id="p2">
+      <h2>Lịch hẹn <button class="btn small" onclick="toggleForm('aForm')">+ Đặt lịch</button></h2>
+      <div class="form" id="aForm">
+        <label>Khách hàng</label>
+        <select id="a_cust"></select>
+        <label>Combo dịch vụ</label>
+        <select id="a_service" onchange="autoPrice()"></select>
+        <label>Cân nặng thú cưng</label>
+        <select id="a_weight" onchange="autoPrice()"></select>
+        <label>Ngày</label>
+        <input id="a_date" type="date">
+        <label>Giờ</label>
+        <input id="a_time" type="time">
+        <label>Giá (VNĐ)</label>
+        <input id="a_price" type="number" inputmode="numeric">
+        <div class="actions" style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn ghost" onclick="toggleForm('aForm')">Hủy</button>
+          <button class="btn" onclick="saveAppt()">Lưu</button>
+        </div>
+      </div>
+      <div class="wkhead">
+        <button class="btn ghost small" onclick="shiftDay(-7)">◀</button>
+        <div class="mid"><span id="wkLabel"></span><button class="btn small" onclick="goToday()">Hôm nay</button></div>
+        <button class="btn ghost small" onclick="shiftDay(7)">▶</button>
+      </div>
+      <div class="wkstrip" id="wkStrip"></div>
+      <input type="hidden" id="aDay">
+      <div class="asum" id="aSum"></div>
+      <div id="aList"></div>
+    </section>
+
+    <!-- ============ TAB 4: CÀI ĐẶT ============ -->
+    <section class="page" id="p3">
+      <h2>Cài đặt</h2>
+      <div class="card">
+        <div class="setTitle">💰 Bảng giá dịch vụ</div>
+        <div class="sub">Giá theo cân nặng (VNĐ). Sửa xong bấm “Lưu bảng giá”.</div>
+        <div id="priceEditor"></div>
+        <div class="combo">
+          <div class="sub" style="margin:0 0 6px">Cộng / trừ cùng lúc cho tất cả giá</div>
+          <div style="display:flex;gap:6px">
+            <input id="bulkAdd" class="inp" type="number" inputmode="numeric" placeholder="VD: 10000">
+            <button class="btn ghost small" onclick="bulkAdjust(1)">+ Cộng</button>
+            <button class="btn ghost small" onclick="bulkAdjust(-1)">− Trừ</button>
+          </div>
+        </div>
+        <button class="btn" style="width:100%;margin-top:12px" onclick="savePrices()">Lưu bảng giá</button>
+      </div>
+
+      <div class="card">
+        <div class="setTitle">⏰ Nhắc khách quay lại</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <span class="sub" style="margin:0;flex:1">Nhắc khi khách chưa quay lại sau</span>
+          <input id="lateDaysInp" class="inp" type="number" inputmode="numeric" style="width:70px" onchange="saveLateDays()">
+          <span class="sub" style="margin:0">ngày</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="setTitle">📦 Sao lưu & khôi phục</div>
+        <div class="sub" id="dataInfo"></div>
+        <label class="chk"><input type="checkbox" id="expPhotos" checked> Kèm ảnh trong file sao lưu</label>
+        <button class="btn" style="width:100%;margin-top:10px" onclick="exportData()">⬇️ Xuất dữ liệu (file .json)</button>
+        <button class="btn ghost" style="width:100%;margin-top:8px" onclick="exportCsv()">⬇️ Xuất thu chi ra Excel (.csv)</button>
+        <label class="btn ghost" style="display:block;text-align:center;margin-top:8px">⬆️ Nhập dữ liệu từ file .json
+          <input type="file" style="display:none" onchange="importData(this)"></label>
+        <div class="sub">Nhập dữ liệu sẽ thay thế toàn bộ dữ liệu hiện tại.</div>
+      </div>
+
+      <div class="card">
+        <div class="setTitle">🧪 Dữ liệu mẫu</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn ghost small" onclick="makeDemo()">Tạo dữ liệu mẫu</button>
+          <button class="btn ghost small" onclick="clearDemo()">Xóa dữ liệu mẫu</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="setTitle" style="color:var(--red)">⚠️ Xóa toàn bộ dữ liệu</div>
+        <div class="sub">Bảng giá và cài đặt được giữ lại. Nên xuất file sao lưu trước.</div>
+        <button class="btn" style="background:var(--red);width:100%;margin-top:8px" onclick="wipeAll()">Xóa tất cả</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<nav>
+  <button id="n0" class="active" onclick="goTab(0)"><span class="ic">🐾</span>Khách hàng<span class="bar"></span></button>
+  <button id="n1" onclick="goTab(1)"><span class="ic">📅</span>Lịch hẹn<span class="bar" style="display:none"></span></button>
+  <button id="n2" onclick="goTab(2)"><span class="ic">💰</span>Thu chi<span class="bar" style="display:none"></span></button>
+  <button id="n3" onclick="goTab(3)"><span class="ic">⚙️</span>Cài đặt<span class="bar" style="display:none"></span></button>
+</nav>
+
+<div id="toast"></div>
+<div id="modal"><div class="box"><p id="modalMsg"></p><div class="acts">
+  <button class="btn ghost" onclick="closeAsk(false)">Hủy</button>
+  <button class="btn" onclick="closeAsk(true)">Đồng ý</button>
+</div></div></div>
+<div id="lightbox" onclick="this.classList.remove('show')"><img alt=""></div>
+
+<script>
+/* ---------- Data ---------- */
+const KEY = 'tina-spa-v1';
+/* Lưu dữ liệu bằng IndexedDB: chứa được hàng trăm MB (đủ cho ảnh), dữ liệu nằm trong bộ nhớ của app.
+   Nếu IndexedDB không dùng được (vd. khung xem trước) thì dùng localStorage, cuối cùng là bộ nhớ tạm. */
+const IDB = {
+  _c: null,
+  conn(){
+    return this._c || (this._c = new Promise((res, rej) => {
+      const r = indexedDB.open('tina-spa', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    }));
+  },
+  async get(k){
+    const d = await this.conn();
+    return new Promise((res, rej) => { const q = d.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  },
+  async set(k, v){
+    const d = await this.conn();
+    return new Promise((res, rej) => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); });
+  }
+};
+let db = { customers: [], appts: [], txs: [] };
+let ready = false, useIDB = true, warnedFull = false;
+async function loadDb(){
+  try {
+    const d = await IDB.get(KEY);
+    if (d) return d;
+  } catch (e) { useIDB = false; }
+  try { // chuyển dữ liệu cũ từ localStorage (bản web trước) sang
+    const old = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (old && useIDB) { await IDB.set(KEY, old); try { localStorage.removeItem(KEY); } catch (e) {} }
+    return old;
+  } catch (e) { return null; }
+}
+function onSaveError(e){
+  if (warnedFull) return;
+  warnedFull = true;
+  setTimeout(() => toast(e && e.name === 'QuotaExceededError' ? 'Bộ nhớ đã đầy, hãy xuất sao lưu và xóa bớt ảnh' : 'Không lưu được dữ liệu trên thiết bị này'), 50);
+}
+function save(){
+  if (!ready) return;
+  if (useIDB) { IDB.set(KEY, db).catch(onSaveError); return; }
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { onSaveError(e); }
+}
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+let toastT;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
+}
+let askCb = null;
+function ask(msg, cb){ askCb = cb; document.getElementById('modalMsg').textContent = msg; document.getElementById('modal').classList.add('show'); }
+function closeAsk(ok){ document.getElementById('modal').classList.remove('show'); const f = askCb; askCb = null; if (ok && f) f(); }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const today = () => new Date().toLocaleDateString('en-CA');
+const money = n => (Number(n) || 0).toLocaleString('vi-VN') + ' ₫';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* Bảng giá: giá cũ + 20.000đ. Thứ tự giá tương ứng với WEIGHTS (kg) */
+const WEIGHTS = [3, 5, 8, 10, 15, 20];
+const COMBOS = {
+  'Tắm, vệ sinh':           {prices:[120000, 170000, 220000, 270000, 320000, 370000]},
+  'Tắm, vệ sinh, cạo lông': {prices:[170000, 220000, 270000, 320000, 390000, 470000]},
+  'Tắm, vệ sinh, cắt tỉa':  {prices:[270000, 320000, 420000, 470000, 620000, 720000]}
+};
+
+/* ---------- Ảnh: thu nhỏ trước khi lưu để tiết kiệm bộ nhớ ---------- */
+function pickPhoto(file, maxSide, cb){
+  const r = new FileReader();
+  r.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      cb(c.toDataURL('image/jpeg', 0.75));
+    };
+    img.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
+function avHTML(src, type, cls = ''){
+  if (src) return `<img class="av ${cls}" src="${src}" alt="">`;
+  const icon = type === 'Mèo' ? '🐱' : type === 'Chó' ? '🐶' : '🐾';
+  return `<div class="av ${cls}">${icon}</div>`;
+}
+function viewImg(src){
+  const lb = document.getElementById('lightbox');
+  lb.querySelector('img').src = src;
+  lb.classList.add('show');
+}
+
+/* ---------- Tabs & swipe ---------- */
+let cur = 0;
+function goTab(i){
+  cur = Math.max(0, Math.min(3, i));
+  if (cur === 3) renderSettings();
+  if (cur === 0) renderCustomers();
+  if (cur === 2) { finView = 'week'; weekStart = mondayOf(today()); renderFinance(); }
+  document.getElementById('track').style.transform = `translateX(-${cur * 100}%)`;
+  [0,1,2,3].forEach(k => {
+    const b = document.getElementById('n'+k);
+    b.classList.toggle('active', k === cur);
+    b.querySelector('.bar').style.display = k === cur ? 'block' : 'none';
+  });
+}
+(function(){
+  const vp = document.getElementById('vp');
+  let sx = 0, sy = 0, t0 = 0;
+  vp.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; t0 = Date.now(); }, {passive:true});
+  vp.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - t0 < 800) {
+      goTab(cur + (dx < 0 ? 1 : -1));
+    }
+  }, {passive:true});
+})();
+
+function toggleForm(id){ document.getElementById(id).classList.toggle('show'); }
+
+/* ---------- KHÁCH HÀNG ---------- */
+let editId = null, tmpAv = null;
+function drawAvPrev(){
+  document.getElementById('c_avPrev').innerHTML = avHTML(tmpAv, document.getElementById('c_type').value, 'big');
+}
+function onAvatarPick(input){
+  const f = input.files[0]; if (!f) return;
+  pickPhoto(f, 400, u => { tmpAv = u; drawAvPrev(); });
+  input.value = '';
+}
+function removeAvatar(){ tmpAv = null; drawAvPrev(); }
+function resetCustomerForm(){
+  editId = null; tmpAv = null;
+  ['c_name','c_phone','c_pet','c_note','c_ownerNote'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('c_type').value = 'Chó';
+  document.getElementById('cFormTitle').textContent = 'Thêm khách hàng mới';
+  drawAvPrev();
+}
+function openAddCustomer(){
+  resetCustomerForm();
+  document.getElementById('cForm').classList.add('show');
+}
+function openEditCustomer(id){
+  const c = db.customers.find(x => x.id === id); if (!c) return;
+  resetCustomerForm();
+  editId = id; tmpAv = c.avatar || null;
+  document.getElementById('c_name').value = c.name || '';
+  document.getElementById('c_phone').value = c.phone || '';
+  document.getElementById('c_pet').value = c.pet || '';
+  document.getElementById('c_type').value = c.type || 'Chó';
+  document.getElementById('c_note').value = c.note || '';
+  document.getElementById('c_ownerNote').value = c.ownerNote || '';
+  document.getElementById('cFormTitle').textContent = 'Sửa thông tin khách hàng';
+  drawAvPrev();
+  document.getElementById('cForm').classList.add('show');
+  document.getElementById('cForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function closeCustomerForm(){
+  document.getElementById('cForm').classList.remove('show');
+  resetCustomerForm();
+}
+function saveCustomer(){
+  const name = document.getElementById('c_name').value.trim();
+  const pet = document.getElementById('c_pet').value.trim();
+  if (!name || !pet) return toast('Nhập tên chủ và tên thú cưng nhé');
+  const data = {
+    name, pet,
+    phone: document.getElementById('c_phone').value.trim(),
+    type: document.getElementById('c_type').value,
+    note: document.getElementById('c_note').value.trim(),
+    ownerNote: document.getElementById('c_ownerNote').value.trim(),
+    avatar: tmpAv
+  };
+  if (editId) {
+    Object.assign(db.customers.find(x => x.id === editId), data);
+  } else {
+    db.customers.unshift({ id: uid(), ...data });
+  }
+  save();
+  closeCustomerForm();
+  renderCustomers(); refreshCustomerSelect(); renderAppts();
+}
+function deleteCustomer(id){
+  ask('Xóa khách hàng này?', () => {
+    db.customers = db.customers.filter(c => c.id !== id);
+    save(); renderCustomers(); refreshCustomerSelect();
+  });
+}
+function renderCustomers(){
+  const q = document.getElementById('cSearch').value.trim().toLowerCase();
+  const list = db.customers.filter(c =>
+    !q || [c.name, c.phone, c.pet].some(v => (v||'').toLowerCase().includes(q)));
+  const lateIds = db.customers.filter(isLate).map(c => c.id);
+  if (!lateIds.length) lateOnly = false;
+  const shown = lateOnly ? list.filter(c => lateIds.includes(c.id)) : list;
+  const bar = lateIds.length
+    ? `<div class="alertbar" onclick="toggleLate()"><span>⏰ ${lateIds.length} khách lâu chưa quay lại (từ ${LATE_DAYS} ngày)</span><u>${lateOnly ? 'Xem tất cả' : 'Xem'}</u></div>` : '';
+  const el = document.getElementById('cList');
+  if (!shown.length) { el.innerHTML = bar + '<div class="empty">Chưa có khách nào.<br>Bấm “+ Thêm” để bắt đầu 🐶</div>'; return; }
+  el.innerHTML = bar + shown.map(c => { const lv = lastVisit(c.id), late = lateIds.includes(c.id); return `
+    <div class="card">
+      <div class="row">
+        <div class="cwrap">
+          ${avHTML(c.avatar, c.type)}
+          <div>
+            <div class="name">${esc(c.pet)} <span class="tag">${esc(c.type)}</span></div>
+            <div class="sub">Chủ: ${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</div>
+            ${c.note ? `<div class="petnote">🐾 ${esc(c.note)}</div>` : ''}
+            ${c.ownerNote ? `<div class="owner">👤 ${esc(c.ownerNote)}</div>` : ''}
+            ${lv ? `<div class="visit">✂️ Lần cuối: ${fmtD(lv)} (${daysSince(lv)} ngày trước)</div>` : ''}
+            ${late ? `<div class="late">⏰ ${daysSince(lv)} ngày chưa quay lại – nên nhắn hỏi thăm</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn small ghost" onclick="openEditCustomer('${c.id}')">Sửa</button>
+          <button class="btn del small" onclick="deleteCustomer('${c.id}')">Xóa</button>
+        </div>
+      </div>
+    </div>`; }).join('');
+}
+/* Khách lâu chưa quay lại: lần làm xong gần nhất cách hôm nay >= 15 ngày và chưa đặt lịch mới */
+let LATE_DAYS = 15;
+let lateOnly = false;
+function toggleLate(){ lateOnly = !lateOnly; renderCustomers(); }
+function lastVisit(cid){
+  const ds = db.appts.filter(a => a.cid === cid && a.done && a.date <= today()).map(a => a.date).sort();
+  return ds.length ? ds[ds.length - 1] : null;
+}
+function daysSince(d){ return Math.round((new Date(today() + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000); }
+function isLate(c){
+  const lv = lastVisit(c.id);
+  const booked = db.appts.some(a => a.cid === c.id && !a.done && a.date >= today());
+  return !!lv && daysSince(lv) >= LATE_DAYS && !booked;
+}
+
+/* ---------- THU CHI ---------- */
+let txType = 'thu';
+function setTxType(t){
+  txType = t;
+  document.querySelectorAll('#tSeg button').forEach(b => {
+    const on = b.dataset.t === t;
+    b.className = on ? 'on ' + (t === 'thu' ? 'in' : 'out') : '';
+  });
+}
+function openTxForm(){
+  document.getElementById('t_date').value = today();
+  setTxType('thu');
+  document.getElementById('tForm').classList.add('show');
+  document.getElementById('t_amt').focus();
+}
+function saveTx(){
+  const amount = Number(document.getElementById('t_amt').value);
+  if (!amount || amount <= 0) return toast('Nhập số tiền');
+  db.txs.push({
+    id: uid(), type: txType, amount,
+    desc: document.getElementById('t_desc').value.trim() || (txType === 'thu' ? 'Thu' : 'Chi'),
+    date: document.getElementById('t_date').value || today()
+  });
+  save();
+  document.getElementById('t_amt').value = '';
+  document.getElementById('t_desc').value = '';
+  toggleForm('tForm');
+  renderFinance();
+}
+function deleteTx(id){
+  ask('Xóa giao dịch này?', () => {
+    db.txs = db.txs.filter(t => t.id !== id);
+    save(); renderFinance();
+  });
+}
+let finView = 'week', weekStart = null;
+const fmtD = s => s.split('-').reverse().join('/');
+function mondayOf(s){ const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toLocaleDateString('en-CA'); }
+function addDays(s, n){ const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA'); }
+function setView(v){ finView = v; renderFinance(); }
+function shiftWeek(n){ weekStart = addDays(weekStart, 7 * n); renderFinance(); }
+function renderFinance(){
+  const m = document.getElementById('fMonth');
+  if (!m.value) m.value = today().slice(0,7);
+  if (!weekStart) weekStart = mondayOf(today());
+  const isWeek = finView === 'week';
+  let from, to, label;
+  if (isWeek) {
+    from = weekStart; to = addDays(weekStart, 6);
+    label = `${fmtD(from)} – ${fmtD(to)}`;
+  } else {
+    from = m.value + '-01'; to = m.value + '-31';
+    label = `Tháng ${m.value.split('-')[1]}/${m.value.split('-')[0]}`;
+  }
+  document.querySelectorAll('#viewSeg button').forEach(b => b.className = b.dataset.v === finView ? 'on pk' : '');
+  document.getElementById('fMonthBox').style.display = isWeek ? 'none' : 'block';
+  document.getElementById('fWeekBox').style.display = isWeek ? 'flex' : 'none';
+  document.getElementById('weekLabel').textContent = isWeek ? label : '';
+  const list = db.txs.filter(t => t.date >= from && t.date <= to).sort((a,b) => b.date.localeCompare(a.date));
+  const inc = list.filter(t => t.type==='thu').reduce((s,t)=>s+t.amount,0);
+  const exp = list.filter(t => t.type==='chi').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('fStats').innerHTML = `
+    <div class="profit ${inc - exp >= 0 ? 'pos' : 'neg'}">
+      <small>${inc - exp >= 0 ? '📈 Lãi' : '📉 Lỗ'} ${isWeek ? 'tuần' : 'tháng'} · ${label}</small>
+      <b>${inc - exp < 0 ? '−' : ''}${money(Math.abs(inc - exp))}</b>
+    </div>
+    <div class="stat in"><small>Tổng thu</small><b class="amt-in">${money(inc)}</b></div>
+    <div class="stat out"><small>Tổng chi</small><b class="amt-out">${money(exp)}</b></div>`;
+  document.getElementById('tList').innerHTML = list.length ? list.map(t => `
+    <div class="card row">
+      <div>
+        <div class="name">${esc(t.desc)}</div>
+        <div class="sub">${fmtD(t.date)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="${t.type==='thu'?'amt-in':'amt-out'}">${t.type==='thu'?'+':'−'}${money(t.amount)}</span>
+        <button class="btn del small" onclick="deleteTx('${t.id}')">✕</button>
+      </div>
+    </div>`).join('') : '<div class="empty">Chưa có giao dịch trong khoảng này.</div>';
+}
+
+/* ---------- LỊCH HẸN ---------- */
+function refreshCustomerSelect(){
+  const s = document.getElementById('a_cust');
+  s.innerHTML = db.customers.length
+    ? db.customers.map(c => `<option value="${c.id}">${esc(c.pet)} — ${esc(c.name)}</option>`).join('')
+    : '<option value="">Chưa có khách hàng</option>';
+}
+function autoPrice(){
+  const s = document.getElementById('a_service').value;
+  const w = Number(document.getElementById('a_weight').value);
+  const i = WEIGHTS.indexOf(w);
+  // Trên 20kg hoặc dịch vụ "Khác": nhập giá tay
+  document.getElementById('a_price').value = (COMBOS[s] && i >= 0) ? COMBOS[s].prices[i] : '';
+}
+function saveAppt(){
+  const cid = document.getElementById('a_cust').value;
+  if (!cid) return toast('Thêm khách hàng trước khi đặt lịch');
+  const date = document.getElementById('a_date').value || today();
+  db.appts.push({
+    id: uid(), cid, date,
+    time: document.getElementById('a_time').value || '09:00',
+    service: document.getElementById('a_service').value,
+    weight: Number(document.getElementById('a_weight').value) || 0,
+    price: Number(document.getElementById('a_price').value) || 0,
+    done: false
+  });
+  save();
+  toggleForm('aForm');
+  document.getElementById('aDay').value = date;
+  renderAppts();
+}
+function toggleDone(id){
+  const a = db.appts.find(x => x.id === id); if (!a) return;
+  const c = db.customers.find(x => x.id === a.cid) || {pet:''};
+  if (!a.done) {
+    // Xong & đã thu tiền: tự ghi khoản thu vào Thu chi
+    a.done = true;
+    db.txs.push({id: uid(), type:'thu', amount: a.price, desc: `${c.pet} – ${a.service}`,
+                 date: a.date, apptId: a.id, demo: a.demo});
+    save(); renderAppts(); renderFinance();
+    toast(`Đã thu ${money(a.price)} · ghi vào Thu chi`);
+  } else {
+    ask('Hủy trạng thái đã thu tiền? Khoản thu sẽ bị xóa khỏi Thu chi.', () => {
+      a.done = false;
+      db.txs = db.txs.filter(t => t.apptId !== a.id);
+      save(); renderAppts(); renderFinance();
+    });
+  }
+}
+function deleteAppt(id){
+  ask('Xóa lịch hẹn này?', () => {
+    db.appts = db.appts.filter(a => a.id !== id);
+    db.txs = db.txs.filter(t => t.apptId !== id);
+    save(); renderAppts(); renderFinance();
+  });
+}
+/* Ảnh trước / sau khi làm, gắn với từng lịch hẹn */
+function photosOf(a, which){ const v = a[which]; return Array.isArray(v) ? v : (v ? [v] : []); }
+function onApptPhoto(input, id, which){
+  const files = [...input.files]; input.value = '';
+  const a = db.appts.find(x => x.id === id); if (!a || !files.length) return;
+  a[which] = photosOf(a, which);
+  files.forEach(f => pickPhoto(f, 800, u => { a[which].push(u); save(); renderAppts(); }));
+}
+function removeApptPhoto(id, which, i){
+  const a = db.appts.find(x => x.id === id); if (!a) return;
+  ask('Xóa ảnh này?', () => { a[which] = photosOf(a, which); a[which].splice(i, 1); save(); renderAppts(); });
+}
+function photoRow(a, which, cap){
+  const arr = photosOf(a, which);
+  return `<div class="phrow"><div class="lbl">${cap} (${arr.length})</div><div class="phlist">
+    ${arr.map((src, i) => `<div class="th"><img src="${src}" alt="" onclick="viewImg(this.src)"><button class="x" onclick="removeApptPhoto('${a.id}','${which}',${i})">✕</button></div>`).join('')}
+    <div class="th add"><label>📷<span>Chụp</span><input type="file" accept="image/*" capture="environment" onchange="onApptPhoto(this,'${a.id}','${which}')"></label></div>
+    <div class="th add"><label>🖼️<span>Thư viện</span><input type="file" accept="image/*" multiple onchange="onApptPhoto(this,'${a.id}','${which}')"></label></div>
+  </div></div>`;
+}
+
+/* Thanh tuần: 7 ngày, ngày có lịch được tô vàng, ngày đang chọn màu hồng */
+function shiftDay(n){
+  const d = document.getElementById('aDay');
+  d.value = addDays(d.value || today(), n);
+  renderAppts();
+}
+function pickDay(d){ document.getElementById('aDay').value = d; renderAppts(); }
+function goToday(){ pickDay(today()); }
+function renderWeekStrip(day){
+  const mon = mondayOf(day), names = ['T2','T3','T4','T5','T6','T7','CN'];
+  document.getElementById('wkLabel').textContent = `${fmtD(mon).slice(0,5)} – ${fmtD(addDays(mon, 6)).slice(0,5)}`;
+  document.getElementById('wkStrip').innerHTML = names.map((n, i) => {
+    const d = addDays(mon, i);
+    const cnt = db.appts.filter(a => a.date === d).length;
+    const cls = ['wd', cnt ? 'has' : '', d === today() ? 'today' : '', d === day ? 'sel' : ''].join(' ');
+    return `<button class="${cls}" onclick="pickDay('${d}')"><small>${n}</small><b>${Number(d.slice(8))}</b><span class="cnt">${cnt ? cnt + ' lịch' : ''}</span></button>`;
+  }).join('');
+}
+function renderAppts(){
+  const d = document.getElementById('aDay');
+  if (!d.value) d.value = today();
+  const day = d.value;
+  const dayCount = db.appts.filter(a => a.date === day).length;
+  const monthCount = db.appts.filter(a => a.date.startsWith(day.slice(0,7))).length;
+  renderWeekStrip(day);
+  document.getElementById('aSum').textContent =
+    `${day === today() ? 'Hôm nay' : fmtD(day)}: ${dayCount} lịch · Tháng ${day.slice(5,7)}: ${monthCount} lịch`;
+  if (!document.getElementById('a_date').value) document.getElementById('a_date').value = day;
+  const list = db.appts.filter(a => a.date === day).sort((a,b) => a.time.localeCompare(b.time));
+  document.getElementById('aList').innerHTML = list.length ? list.map(a => {
+    const c = db.customers.find(x => x.id === a.cid) || {pet:'(đã xóa)', name:'', phone:'', type:'', avatar:null};
+    return `
+    <div class="card">
+      <div class="row">
+        <div class="cwrap">
+          ${avHTML(c.avatar, c.type, 'sm')}
+          <div>
+            <div class="name">⏰ ${esc(a.time)} · ${esc(c.pet)}</div>
+            <div class="sub">${esc(a.service)}${a.weight ? ' · ' + a.weight + 'kg' : ''}</div>
+            <div class="sub">Chủ: ${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</div>
+            ${c.note ? `<div class="petnote">🐾 ${esc(c.note)}</div>` : ''}
+            ${c.ownerNote ? `<div class="owner">👤 ${esc(c.ownerNote)}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="price">${money(a.price)}</span>
+          <button class="btn del small" onclick="deleteAppt('${a.id}')">Xóa</button>
+        </div>
+      </div>
+      <button class="btn payBtn ${a.done ? 'paid' : ''}" onclick="toggleDone('${a.id}')">
+        ${a.done ? '✓ Đã thu ' + money(a.price) : 'Xong - đã thu tiền'}
+      </button>
+      ${photoRow(a, 'before', '📷 Trước khi làm')}
+      ${photoRow(a, 'after', '✨ Sau khi làm')}
+    </div>`;
+  }).join('') : '<div class="empty">Không có lịch hẹn ngày này.</div>';
+}
+
+/* ---------- Dữ liệu mẫu (tháng hiện tại) ---------- */
+function makeDemo(){
+  // Có dữ liệu mẫu cũ thì xóa đi rồi tạo lại, không hỏi
+  db.customers = db.customers.filter(x => !x.demo);
+  db.appts = db.appts.filter(x => !x.demo);
+  db.txs = db.txs.filter(x => !x.demo);
+  const ym = today().slice(0,7);
+  const dt = n => ym + '-' + String(n).padStart(2,'0');
+  const W = [5, 10, 3, 8, 3, 20, 8, 3];   // cân nặng từng thú cưng
+  const cs = [
+    {name:'Chị Lan',   phone:'0901 234 567', pet:'Milo', type:'Chó',  note:'Hay cắn khi cắt móng', ownerNote:'Khách quen, thích chuyển khoản'},
+    {name:'Anh Tuấn',  phone:'0912 345 678', pet:'Bông', type:'Chó',  note:'Lông dày, rụng nhiều', ownerNote:'Hay đến trễ 15 phút'},
+    {name:'Chị Hương', phone:'0933 456 789', pet:'Mimi', type:'Mèo',  note:'Sợ tiếng máy sấy', ownerNote:'Kỹ tính, muốn xem ảnh trước/sau'},
+    {name:'Bạn Minh',  phone:'0944 567 890', pet:'Xoài', type:'Chó',  note:''},
+    {name:'Chị Ngọc',  phone:'0955 678 901', pet:'Kem',  type:'Mèo',  note:'Dị ứng sữa tắm có hương'},
+    {name:'Anh Hải',   phone:'0966 789 012', pet:'Gấu',  type:'Chó',  note:'Nặng, cần 2 người phụ', ownerNote:'Khách VIP, hay giới thiệu bạn bè'},
+    {name:'Chị Mai',   phone:'0977 890 123', pet:'Lu',    type:'Chó', note:'Chỉ dùng sữa tắm trị ve', ownerNote:'Hay hỏi giảm giá'},
+    {name:'Anh Long',  phone:'0988 901 234', pet:'Mochi', type:'Mèo', note:'Mèo già, thao tác nhẹ tay', ownerNote:''}
+  ].map(c => ({...c, id: uid(), demo: true}));
+  const plan = [
+    [2,'09:00',0,'Tắm, vệ sinh'],          [3,'10:30',2,'Tắm, vệ sinh, cạo lông'],
+    [4,'14:00',1,'Tắm, vệ sinh, cắt tỉa'], [6,'09:30',3,'Tắm, vệ sinh'],
+    [8,'16:00',4,'Tắm, vệ sinh, cạo lông'], [9,'09:00',5,'Tắm, vệ sinh, cắt tỉa'],
+    [11,'10:00',0,'Tắm, vệ sinh'],        [13,'15:00',2,'Tắm, vệ sinh'],
+    [15,'09:30',1,'Tắm, vệ sinh'],        [16,'11:00',3,'Tắm, vệ sinh, cắt tỉa'],
+    [17,'09:00',1,'Tắm, vệ sinh'],          [17,'14:00',0,'Tắm, vệ sinh, cạo lông'],
+    [18,'09:00',4,'Tắm, vệ sinh'],        [20,'10:00',0,'Tắm, vệ sinh, cạo lông'],
+    [22,'14:30',5,'Tắm, vệ sinh, cắt tỉa'], [24,'09:00',2,'Tắm, vệ sinh'],
+    [27,'16:00',1,'Tắm, vệ sinh, cạo lông'], [29,'09:30',3,'Tắm, vệ sinh']
+  ];
+  const appts = plan.map(([day, time, ci, combo]) => {
+    const w = W[ci], price = COMBOS[combo].prices[WEIGHTS.indexOf(w)];
+    return {id: uid(), cid: cs[ci].id, date: dt(day), time, service: combo, weight: w,
+            price, done: dt(day) < today(), demo: true};
+  });
+  // Lu và Mochi: lần cuối cách đây 27 và 19 ngày, chưa đặt lịch mới
+  [[6, -27, 'Tắm, vệ sinh, cạo lông', '10:00'], [7, -19, 'Tắm, vệ sinh', '15:00']].forEach(([ci, off, combo, time]) => {
+    const w = W[ci];
+    appts.push({id: uid(), cid: cs[ci].id, date: addDays(today(), off), time, service: combo, weight: w,
+                price: COMBOS[combo].prices[WEIGHTS.indexOf(w)], done: true, demo: true});
+  });
+  const txs = appts.filter(a => a.done).map(a => {
+    const c = cs.find(x => x.id === a.cid);
+    return {id: uid(), type:'thu', amount: a.price, desc: `${c.pet} – ${a.service}`, date: a.date, apptId: a.id, demo: true};
+  });
+  [[1,'chi','Tiền mặt bằng tháng',5000000],[2,'chi','Điện nước',850000],
+   [3,'chi','Mua cát mèo',180000],[5,'chi','Sữa tắm & dầu xả',420000],
+   [7,'chi','Khăn tắm, bảo trì máy sấy',260000],[10,'chi','Quảng cáo Facebook',300000],
+   [12,'thu','Bán vòng cổ',85000],[14,'chi','Thức ăn hạt & snack',350000]
+  ].forEach(([day, type, desc, amount]) =>
+    txs.push({id: uid(), type, amount, desc, date: dt(day), demo: true}));
+  db.customers = [...cs, ...db.customers];
+  db.appts = [...appts, ...db.appts];
+  db.txs = [...txs, ...db.txs];
+  save();
+  document.getElementById('aDay').value = today();
+  refreshCustomerSelect(); renderCustomers(); renderAppts(); renderFinance();
+  renderSettings();
+  toast(`Đã tạo: ${cs.length} khách, ${appts.length} lịch hẹn, ${txs.length} thu chi`);
+}
+function clearDemo(){
+  ask('Xóa toàn bộ dữ liệu mẫu? Dữ liệu thật vẫn giữ nguyên.', () => {
+    db.customers = db.customers.filter(x => !x.demo);
+    db.appts = db.appts.filter(x => !x.demo);
+    db.txs = db.txs.filter(x => !x.demo);
+    save(); refreshCustomerSelect(); renderCustomers(); renderAppts(); renderFinance();
+    renderSettings();
+    toast('Đã xóa dữ liệu mẫu');
+  });
+}
+
+/* ---------- CÀI ĐẶT ---------- */
+function applySettings(){
+  const s = db.settings || {};
+  if (s.prices) Object.keys(COMBOS).forEach(k => {
+    if (Array.isArray(s.prices[k]) && s.prices[k].length === WEIGHTS.length) COMBOS[k].prices = s.prices[k].map(Number);
+  });
+  LATE_DAYS = Number(s.lateDays) || 15;
+}
+function renderSettings(){
+  document.getElementById('priceEditor').innerHTML = Object.keys(COMBOS).map(k => `
+    <div class="combo"><b>${esc(k)}</b><div class="pgrid">
+      ${WEIGHTS.map((w, i) => `<label><span>${w} kg</span><input class="inp pinp" data-c="${esc(k)}" data-i="${i}" type="number" inputmode="numeric" step="1000" value="${COMBOS[k].prices[i]}"></label>`).join('')}
+    </div></div>`).join('');
+  document.getElementById('lateDaysInp').value = LATE_DAYS;
+  const photos = db.customers.filter(c => c.avatar).length
+    + db.appts.reduce((s, a) => s + photosOf(a, 'before').length + photosOf(a, 'after').length, 0);
+  const mb = new Blob([JSON.stringify(db)]).size / 1048576;
+  document.getElementById('dataInfo').textContent =
+    `Hiện có ${db.customers.length} khách · ${db.appts.length} lịch hẹn · ${db.txs.length} thu chi · ${photos} ảnh (≈ ${mb.toFixed(1)} MB)`;
+}
+function bulkAdjust(sign){
+  const v = Number(document.getElementById('bulkAdd').value) || 0;
+  if (!v) return toast('Nhập số tiền muốn cộng/trừ');
+  document.querySelectorAll('.pinp').forEach(inp => inp.value = Math.max(0, (Number(inp.value) || 0) + sign * v));
+  toast(`Đã ${sign > 0 ? 'cộng' : 'trừ'} ${money(v)} · bấm “Lưu bảng giá” để áp dụng`);
+}
+function savePrices(){
+  const prices = {};
+  Object.keys(COMBOS).forEach(k => prices[k] = COMBOS[k].prices.slice());
+  let bad = false;
+  document.querySelectorAll('.pinp').forEach(inp => {
+    const v = Number(inp.value);
+    if (!(v > 0)) bad = true;
+    prices[inp.dataset.c][Number(inp.dataset.i)] = v;
+  });
+  if (bad) return toast('Có ô giá đang trống hoặc bằng 0');
+  db.settings = {...(db.settings || {}), prices};
+  applySettings(); save(); autoPrice(); renderSettings();
+  toast('Đã lưu bảng giá mới');
+}
+function saveLateDays(){
+  const n = Math.max(1, Math.round(Number(document.getElementById('lateDaysInp').value) || 15));
+  db.settings = {...(db.settings || {}), lateDays: n};
+  applySettings(); save(); renderSettings(); renderCustomers();
+  toast(`Sẽ nhắc khách sau ${n} ngày`);
+}
+const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+async function download(name, text, type){
+  if (isNative()) {
+    const { Filesystem, Share } = window.Capacitor.Plugins;
+    const r = await Filesystem.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
+    try { await Share.share({ title: name, url: r.uri, dialogTitle: 'Lưu hoặc gửi file' }); } catch (e) { /* người dùng đóng bảng chia sẻ */ }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type}));
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function exportData(){
+  const withPhotos = document.getElementById('expPhotos').checked;
+  const data = JSON.parse(JSON.stringify(db));
+  if (!withPhotos) {
+    data.customers.forEach(c => delete c.avatar);
+    data.appts.forEach(a => { delete a.before; delete a.after; });
+  }
+  Object.assign(data, {app: 'TINA Pet Spa', version: 1, exportedAt: new Date().toISOString()});
+  download(`tina-sao-luu-${today()}${withPhotos ? '' : '-khong-anh'}.json`, JSON.stringify(data), 'application/json')
+    .then(() => toast('Đã xuất file sao lưu'), () => toast('Không xuất được file'));
+}
+function exportCsv(){
+  const rows = [['Ngày', 'Loại', 'Nội dung', 'Số tiền']].concat(
+    [...db.txs].sort((a, b) => a.date.localeCompare(b.date))
+      .map(t => [fmtD(t.date), t.type === 'thu' ? 'Thu' : 'Chi', t.desc, t.type === 'thu' ? t.amount : -t.amount]));
+  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  download(`tina-thu-chi-${today()}.csv`, csv, 'text/csv')
+    .then(() => toast('Đã xuất file thu chi'), () => toast('Không xuất được file'));
+}
+function importData(input){
+  const f = input.files[0]; input.value = ''; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let d;
+    try { d = JSON.parse(r.result); } catch (e) { return toast('File không đúng định dạng'); }
+    if (!d || !Array.isArray(d.customers) || !Array.isArray(d.appts) || !Array.isArray(d.txs)) return toast('Đây không phải file dữ liệu TINA');
+    ask(`Nhập ${d.customers.length} khách, ${d.appts.length} lịch hẹn, ${d.txs.length} thu chi? Dữ liệu hiện tại sẽ bị thay thế.`, () => {
+      db = {customers: d.customers, appts: d.appts, txs: d.txs, settings: d.settings || {}};
+      applySettings(); save(); refreshAll();
+      toast('Đã nhập dữ liệu');
+    });
+  };
+  r.readAsText(f);
+}
+function refreshAll(){ refreshCustomerSelect(); renderCustomers(); renderAppts(); renderFinance(); renderSettings(); autoPrice(); }
+function wipeAll(){
+  ask('Xóa TOÀN BỘ khách hàng, lịch hẹn, thu chi và ảnh?', () => {
+    db = {customers: [], appts: [], txs: [], settings: db.settings || {}};
+    save(); refreshAll(); toast('Đã xóa toàn bộ dữ liệu');
+  });
+}
+
+/* ---------- Init ---------- */
+applySettings();
+document.getElementById('t_date').value = today();
+document.getElementById('a_date').value = today();
+document.getElementById('aDay').value = today();
+document.getElementById('fMonth').value = today().slice(0,7);
+document.getElementById('a_service').innerHTML =
+  Object.keys(COMBOS).map(k => `<option>${esc(k)}</option>`).join('') + '<option value="Khác">Khác (nhập giá tay)</option>';
+document.getElementById('a_weight').innerHTML =
+  WEIGHTS.map(w => `<option value="${w}">${w} kg</option>`).join('') + '<option value="0">Trên 20 kg (nhập giá tay)</option>';
+autoPrice();
+refreshCustomerSelect();
+renderCustomers();
+renderFinance();
+// Đổi chỗ tab: Lịch hẹn đứng trước Thu chi
+document.getElementById('track').insertBefore(document.getElementById('p2'), document.getElementById('p1'));
+renderAppts();
+renderSettings();
+goTab(0);
+loadDb().then(d => {
+  if (d) { db = d; db.customers = db.customers || []; db.appts = db.appts || []; db.txs = db.txs || []; applySettings(); refreshAll(); }
+  ready = true;
+});
+
+/* Bản web (GitHub Pages): cho phép cài lên màn hình chính và mở khi không có mạng */
+if ('serviceWorker' in navigator && !isNative() && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+/* Chỉ chạy trong APK */
+if (isNative()) {
+  const P = window.Capacitor.Plugins;
+  try { P.StatusBar.setBackgroundColor({ color: '#F5D55C' }); P.StatusBar.setStyle({ style: 'LIGHT' }); } catch (e) {}
+  // Nút Back của Android: đóng hộp thoại/form trước, rồi về tab đầu, rồi mới thoát app
+  P.App.addListener('backButton', () => {
+    const modal = document.getElementById('modal'), lb = document.getElementById('lightbox');
+    const openForm = document.querySelector('.form.show');
+    if (modal.classList.contains('show')) closeAsk(false);
+    else if (lb.classList.contains('show')) lb.classList.remove('show');
+    else if (openForm) openForm.classList.remove('show');
+    else if (cur !== 0) goTab(0);
+    else P.App.exitApp();
+  });
+}
+</script>
+</body>
+</html>
