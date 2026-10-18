@@ -62,7 +62,7 @@ nav button.active .bar{height:3px;width:28px;background:var(--pink);border-radiu
 .seg button.on.in{background:var(--green);color:#fff}
 .seg button.on.out{background:var(--red);color:#fff}
 .seg button.on.pk{background:var(--pink);color:#fff}
-.week{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:700;font-size:14px}
+.week{display:flex;justify-content:space-between;align-items:center;margin:10px 0;font-weight:700;font-size:14px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .stat{background:var(--white);border-radius:14px;padding:12px;box-shadow:0 1px 3px rgba(74,42,28,.08)}
 .stat small{font-size:11px;color:var(--muted)}
@@ -239,7 +239,12 @@ img.av{display:block}
         <button data-v="week" onclick="setView('week')">Tuần</button>
         <button data-v="month" onclick="setView('month')">Tháng</button>
       </div>
-      <div class="month" id="fMonthBox"><input type="month" id="fMonth" onchange="renderFinance()"></div>
+      <div class="week" id="fMonthBox">
+        <button class="btn ghost small" onclick="shiftMonth(-1)">◀</button>
+        <span id="monthLabel" onclick="thisMonth()" style="cursor:pointer"></span>
+        <button class="btn ghost small" onclick="shiftMonth(1)">▶</button>
+      </div>
+      <input type="hidden" id="fMonth">
       <div class="week" id="fWeekBox" style="display:none">
         <button class="btn ghost small" onclick="shiftWeek(-1)">◀</button>
         <span id="weekLabel"></span>
@@ -690,6 +695,14 @@ function mondayOf(s){ const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate()
 function addDays(s, n){ const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return d.toLocaleDateString('en-CA'); }
 function setView(v){ finView = v; renderFinance(); }
 function shiftWeek(n){ weekStart = addDays(weekStart, 7 * n); renderFinance(); }
+function shiftMonth(n){
+  const m = document.getElementById('fMonth');
+  let [y, mo] = (m.value || today().slice(0, 7)).split('-').map(Number);
+  mo += n; while (mo < 1) { mo += 12; y--; } while (mo > 12) { mo -= 12; y++; }
+  m.value = y + '-' + String(mo).padStart(2, '0');
+  renderFinance();
+}
+function thisMonth(){ document.getElementById('fMonth').value = today().slice(0, 7); renderFinance(); }
 function renderFinance(){
   const m = document.getElementById('fMonth');
   if (!m.value) m.value = today().slice(0,7);
@@ -704,7 +717,8 @@ function renderFinance(){
     label = `Tháng ${m.value.split('-')[1]}/${m.value.split('-')[0]}`;
   }
   document.querySelectorAll('#viewSeg button').forEach(b => b.className = b.dataset.v === finView ? 'on pk' : '');
-  document.getElementById('fMonthBox').style.display = isWeek ? 'none' : 'block';
+  document.getElementById('fMonthBox').style.display = isWeek ? 'none' : 'flex';
+  document.getElementById('monthLabel').textContent = isWeek ? '' : label + (m.value === today().slice(0, 7) ? ' (tháng này)' : '');
   document.getElementById('fWeekBox').style.display = isWeek ? 'flex' : 'none';
   document.getElementById('weekLabel').textContent = isWeek ? label : '';
   const list = db.txs.filter(t => t.date >= from && t.date <= to).sort((a,b) => b.date.localeCompare(a.date));
