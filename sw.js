@@ -1,7 +1,7 @@
 // TINA Pet Spa – service worker
 // 1) Lưu app vào máy để mở được khi mất mạng (luôn thử tải bản mới trước).
 // 2) Nhận thông báo nhắc lịch: máy chủ chỉ gửi "tín hiệu", nội dung lấy từ Apps Script.
-const CACHE = 'tina-web-v17';
+const CACHE = 'tina-web-v18';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {
@@ -15,8 +15,10 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // Luôn hỏi lại máy chủ (bỏ qua bộ nhớ tạm 10 phút của GitHub Pages) để nhận bản mới ngay
+  const fresh = req.mode === 'navigate' ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req, { cache: 'no-cache' });
   e.respondWith(
-    fetch(req).then(res => {
+    fresh.then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
