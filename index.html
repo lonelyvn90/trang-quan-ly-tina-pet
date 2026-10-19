@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <title>TINA Pet Spa</title>
 <meta name="theme-color" content="#F5D55C">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,9 +17,12 @@
   --brown:#4A2A1C; --muted:#9A7F72; --white:#fff; --green:#2E9E6A; --red:#D9473B;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+/* Khung app cố định: chỉ nội dung bên trong cuộn, tiêu đề & thanh tab không bao giờ bị đẩy lên */
+html{height:100%;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0;width:100%}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--yellow-soft);color:var(--brown);
   height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent}
-header{background:var(--yellow);padding:12px 62px;text-align:center;flex-shrink:0;position:relative}
+header{background:var(--yellow);padding:calc(12px + env(safe-area-inset-top)) 62px 12px;text-align:center;flex-shrink:0;position:relative}
 header h1{font-size:20px;color:var(--pink);letter-spacing:2px}
 header p{font-size:11px;color:var(--brown);opacity:.75;margin-top:2px}
 .viewport{flex:1;overflow:hidden;position:relative}
@@ -705,7 +708,7 @@ function openEditCustomer(id){
   document.getElementById('cFormTitle').textContent = 'Sửa thông tin khách hàng';
   drawAvPrev();
   document.getElementById('cForm').classList.add('show');
-  document.getElementById('cForm').scrollIntoView({behavior:'smooth', block:'start'});
+  scrollInPage(document.getElementById('cForm'), 'top');
 }
 function closeCustomerForm(){
   document.getElementById('cForm').classList.remove('show');
@@ -1695,6 +1698,25 @@ async function doRefresh(){
   refreshAll(); renderRemind();
   toast(syncErr ? '⚠️ ' + syncErr : 'Đã làm mới');
 }
+
+/* ---------- Giữ thanh tiêu đề luôn đứng yên ---------- */
+// Cuộn đúng phần nội dung của tab (không cuộn cả trang như scrollIntoView)
+function scrollInPage(el, where){
+  const page = el && el.closest('.page'); if (!page) return;
+  const r = el.getBoundingClientRect(), pr = page.getBoundingClientRect();
+  const delta = where === 'top' ? r.top - pr.top - 8 : r.top - pr.top - page.clientHeight / 3;
+  page.scrollTo({ top: page.scrollTop + delta, behavior: 'smooth' });
+}
+// Trình duyệt tự đẩy cả trang lên (khi bật bàn phím, khi focus ô nhập) → kéo về lại ngay
+const resetDocScroll = () => { if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } };
+window.addEventListener('scroll', resetDocScroll, { passive: true });
+document.addEventListener('focusin', e => {
+  const el = e.target;
+  if (!el.matches || !el.matches('input,select,textarea')) return;
+  setTimeout(() => { resetDocScroll(); scrollInPage(el, 'center'); }, 300);   // đợi bàn phím bật xong
+});
+document.addEventListener('focusout', () => setTimeout(resetDocScroll, 100));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetDocScroll, 50));
 
 /* ---------- Init ---------- */
 applySettings();
