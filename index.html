@@ -238,6 +238,7 @@ img.av{display:block}
 .th.pend{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;color:var(--muted);background:#f3ead0}
 .th.pend small{font-size:10px;font-weight:700}
 .pendimg{width:72px;height:72px;border-radius:9px;background:#f3ead0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.secret{-webkit-text-security:disc;text-security:disc}
 #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:130;padding:20px}
 #lightbox.show{display:flex}
 #lightbox{flex-direction:column;padding:0}
@@ -426,7 +427,7 @@ img.av{display:block}
         <div class="field"><small>Link Apps Script (kết thúc bằng /exec)</small>
           <input id="syncUrl" class="inp" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
         <div class="field"><small>Mã bí mật (giống trong Apps Script)</small>
-          <input id="syncKey" class="inp" type="password" autocomplete="off"></div>
+          <div style="display:flex;gap:6px"><input id="syncKey" class="inp secret" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" style="flex:1"><button class="btn ghost small" type="button" onclick="toggleSecret()" aria-label="Hiện/ẩn mã">👁</button></div></div>
         <div class="field"><small>Tên máy này</small>
           <input id="syncDevice" class="inp" placeholder="VD: Điện thoại Tina"></div>
         <label class="chk"><input type="checkbox" id="syncAuto" checked onchange="syncSetAuto(this.checked)"> Tự động đồng bộ khi có thay đổi</label>
@@ -1718,6 +1719,15 @@ document.addEventListener('focusin', e => {
 document.addEventListener('focusout', () => setTimeout(resetDocScroll, 100));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resetDocScroll, 50));
 
+/* Không để trình duyệt tưởng app là trang đăng nhập (hỏi lưu mật khẩu / tự điền) */
+function noAutofill(root){
+  (root || document).querySelectorAll('input:not([type=file]):not([type=checkbox]):not([type=hidden]),select,textarea').forEach(el => {
+    el.setAttribute('autocomplete', el.type === 'tel' ? 'off' : 'off');
+    el.setAttribute('data-lpignore', 'true'); el.setAttribute('data-1p-ignore', ''); el.setAttribute('data-form-type', 'other');
+  });
+}
+function toggleSecret(){ document.getElementById('syncKey').classList.toggle('secret'); }
+
 /* ---------- Init ---------- */
 applySettings();
 document.getElementById('t_date').value = today();
@@ -1737,6 +1747,7 @@ document.getElementById('track').insertBefore(document.getElementById('p2'), doc
 renderAppts();
 renderSettings();
 goTab(0);
+noAutofill();
 loadDb().then(d => {
   if (d) { db = d; db.customers = db.customers || []; db.appts = db.appts || []; db.txs = db.txs || []; applySettings(); refreshAll(); }
   ready = true;
