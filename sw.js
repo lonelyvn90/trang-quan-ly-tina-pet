@@ -1,7 +1,7 @@
 // TINA Pet Spa – service worker
 // 1) Lưu app vào máy để mở được khi mất mạng (luôn thử tải bản mới trước).
 // 2) Nhận thông báo nhắc lịch: máy chủ chỉ gửi "tín hiệu", nội dung lấy từ Apps Script.
-const CACHE = 'tina-web-v30';
+const CACHE = 'tina-web-v31';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {
